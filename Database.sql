@@ -380,6 +380,46 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE UpdateDepartmentName
+    @DepartmentId INT,
+    @NewName VARCHAR(100),
+    @ResultCode INT OUTPUT,
+    @ResultMessage VARCHAR(200) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @ResultCode = 0;
+    SET @ResultMessage = '';
+
+    BEGIN TRY
+        IF NOT EXISTS (SELECT 1 FROM Departments WHERE department_id = @DepartmentId)
+        BEGIN
+            SET @ResultCode = 1;
+            SET @ResultMessage = 'Department not found.';
+            RETURN;
+        END
+
+        IF EXISTS (SELECT 1 FROM Departments WHERE department_name = @NewName AND department_id != @DepartmentId)
+        BEGIN
+            SET @ResultCode = 2;
+            SET @ResultMessage = 'Department name already exists.';
+            RETURN;
+        END
+
+        UPDATE Departments
+        SET department_name = @NewName
+        WHERE department_id = @DepartmentId;
+
+        SET @ResultCode = 0;
+        SET @ResultMessage = 'Department updated successfully.';
+    END TRY
+    BEGIN CATCH
+        SET @ResultCode = 3;
+        SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
+    END CATCH
+END;
+GO
+
 CREATE OR ALTER PROCEDURE UpdateComplaintPriority
     @ComplaintId  INT,
     @NewPriority  VARCHAR(10),      -- 'Low' | 'Medium' | 'High'
@@ -600,3 +640,265 @@ INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status,
 VALUES
 (2, 1, 'StatusChange', 'Pending', 'In-Progress', 'Assigned to staff'),
 (3, 1, 'StatusChange', 'In-Progress', 'Resolved', 'Issue fixed');
+GO
+
+CREATE OR ALTER PROCEDURE GetUsersAdmin
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Students
+    SELECT
+        s.student_id AS id,
+        s.name,
+        s.email,
+        s.phone,
+        d.department_name,
+        s.is_active,
+        'Student' AS role
+    FROM Students s
+    LEFT JOIN Departments d ON s.department_id = d.department_id
+
+    UNION ALL
+
+    -- Staff
+    SELECT
+        st.staff_id AS id,
+        st.name,
+        st.email,
+        st.phone,
+        d.department_name,
+        st.is_active,
+        'Staff' AS role
+    FROM Staff st
+    LEFT JOIN Departments d ON st.department_id = d.department_id
+
+    ORDER BY role, name;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE AddUserAdmin
+    @Role          VARCHAR(20), -- 'Student' or 'Staff'
+    @Name          VARCHAR(100),
+    @Email         VARCHAR(100),
+    @Password      VARCHAR(255),
+    @Phone         VARCHAR(20) = NULL,
+    @DepartmentId  INT = NULL,
+    @ResultCode    INT OUTPUT,
+    @ResultMessage VARCHAR(200) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @ResultCode = 0;
+    SET @ResultMessage = '';
+
+    BEGIN TRY
+        IF @Role = 'Student'
+        BEGIN
+            IF EXISTS (SELECT 1 FROM Students WHERE email = LOWER(LTRIM(RTRIM(@Email))))
+            BEGIN
+                SET @ResultCode = 1;
+                SET @ResultMessage = 'Student email already exists.';
+                RETURN;
+            END
+
+            INSERT INTO Students (name, email, password, phone, department_id, is_active)
+            VALUES (LTRIM(RTRIM(@Name)), LOWER(LTRIM(RTRIM(@Email))), @Password, @Phone, NULLIF(@DepartmentId, 0), 1);
+        END
+        ELSE IF @Role = 'Staff'
+        BEGIN
+            IF EXISTS (SELECT 1 FROM Staff WHERE email = LOWER(LTRIM(RTRIM(@Email))))
+            BEGIN
+                SET @ResultCode = 1;
+                SET @ResultMessage = 'Staff email already exists.';
+                RETURN;
+            END
+
+            IF @DepartmentId IS NULL OR @DepartmentId = 0
+            BEGIN
+                SET @ResultCode = 1;
+                SET @ResultMessage = 'Department is required for staff.';
+                RETURN;
+            END
+
+            INSERT INTO Staff (name, email, password, phone, department_id, is_active)
+            VALUES (LTRIM(RTRIM(@Name)), LOWER(LTRIM(RTRIM(@Email))), @Password, @Phone, @DepartmentId, 1);
+        END
+        ELSE
+        BEGIN
+            SET @ResultCode = 1;
+            SET @ResultMessage = 'Invalid role specified.';
+            RETURN;
+        END
+
+        SET @ResultCode = 0;
+        SET @ResultMessage = @Role + ' added successfully.';
+    END TRY
+    BEGIN CATCH
+        SET @ResultCode = 2;
+        SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
+    END CATCH
+END;
+GO
+
+CREATE OR ALTER PROCEDURE DeactivateUserAdmin
+    @Id   INT,
+    @Role VARCHAR(20), -- 'Student' or 'Staff'
+    @ResultCode    INT OUTPUT,
+    @ResultMessage VARCHAR(200) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @ResultCode = 0;
+    SET @ResultMessage = '';
+
+    BEGIN TRY
+        IF @Role = 'Student'
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM Students WHERE student_id = @Id)
+            BEGIN
+                SET @ResultCode = 1;
+                SET @ResultMessage = 'Student not found.';
+                RETURN;
+            END
+
+            UPDATE Students SET is_active = 0 WHERE student_id = @Id;
+            SET @ResultMessage = 'Student deactivated successfully.';
+        END
+        ELSE IF @Role = 'Staff'
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM Staff WHERE staff_id = @Id)
+            BEGIN
+                SET @ResultCode = 1;
+                SET @ResultMessage = 'Staff not found.';
+                RETURN;
+            END
+
+            UPDATE Staff SET is_active = 0 WHERE staff_id = @Id;
+            SET @ResultMessage = 'Staff deactivated successfully.';
+        END
+        ELSE
+        BEGIN
+            SET @ResultCode = 1;
+            SET @ResultMessage = 'Invalid role specified.';
+            RETURN;
+        END
+
+        SET @ResultCode = 0;
+    END TRY
+    BEGIN CATCH
+        SET @ResultCode = 2;
+        SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
+    END CATCH
+END;
+GO
+
+CREATE OR ALTER PROCEDURE ActivateUserAdmin
+    @Id   INT,
+    @Role VARCHAR(20), -- 'Student' or 'Staff'
+    @ResultCode    INT OUTPUT,
+    @ResultMessage VARCHAR(200) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @ResultCode = 0;
+    SET @ResultMessage = '';
+
+    BEGIN TRY
+        IF @Role = 'Student'
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM Students WHERE student_id = @Id)
+            BEGIN
+                SET @ResultCode = 1;
+                SET @ResultMessage = 'Student not found.';
+                RETURN;
+            END
+
+            UPDATE Students SET is_active = 1 WHERE student_id = @Id;
+            SET @ResultMessage = 'Student activated successfully.';
+        END
+        ELSE IF @Role = 'Staff'
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM Staff WHERE staff_id = @Id)
+            BEGIN
+                SET @ResultCode = 1;
+                SET @ResultMessage = 'Staff not found.';
+                RETURN;
+            END
+
+            UPDATE Staff SET is_active = 1 WHERE staff_id = @Id;
+            SET @ResultMessage = 'Staff activated successfully.';
+        END
+        ELSE
+        BEGIN
+            SET @ResultCode = 1;
+            SET @ResultMessage = 'Invalid role specified.';
+            RETURN;
+        END
+
+        SET @ResultCode = 0;
+    END TRY
+    BEGIN CATCH
+        SET @ResultCode = 2;
+        SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
+    END CATCH
+END;
+GO
+
+CREATE OR ALTER PROCEDURE GetAdminProfile
+    @AdminId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT admin_id, name, email, phone
+    FROM Admins
+    WHERE admin_id = @AdminId;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE UpdateAdminProfile
+    @AdminId       INT,
+    @Name          VARCHAR(100),
+    @Phone         VARCHAR(20),
+    @Password      VARCHAR(255) = NULL, -- Optional password update
+    @ResultCode    INT OUTPUT,
+    @ResultMessage VARCHAR(200) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @ResultCode = 0;
+    SET @ResultMessage = '';
+
+    BEGIN TRY
+        IF NOT EXISTS (SELECT 1 FROM Admins WHERE admin_id = @AdminId)
+        BEGIN
+            SET @ResultCode = 1;
+            SET @ResultMessage = 'Admin not found.';
+            RETURN;
+        END
+
+        IF @Password IS NOT NULL AND LTRIM(RTRIM(@Password)) <> ''
+        BEGIN
+            UPDATE Admins
+            SET name = LTRIM(RTRIM(@Name)),
+                phone = LTRIM(RTRIM(@Phone)),
+                password = @Password
+            WHERE admin_id = @AdminId;
+        END
+        ELSE
+        BEGIN
+            UPDATE Admins
+            SET name = LTRIM(RTRIM(@Name)),
+                phone = LTRIM(RTRIM(@Phone))
+            WHERE admin_id = @AdminId;
+        END
+
+        SET @ResultCode = 0;
+        SET @ResultMessage = 'Profile updated successfully.';
+    END TRY
+    BEGIN CATCH
+        SET @ResultCode = 2;
+        SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
+    END CATCH
+END;
+GO

@@ -7,6 +7,9 @@ import StaffDashboard from "./pages/staff/StaffDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageComplaints from "./pages/admin/ManageComplaints";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminDepartments from "./pages/admin/AdminDepartments";
+import ManageUsers from "./pages/admin/ManageUsers";
+import AdminProfile from "./pages/admin/AdminProfile";
 function App() {
   return (
     <BrowserRouter>
@@ -20,6 +23,9 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/complaints" element={<ManageComplaints />} />
         <Route path="/admin/reports" element={<AdminReports />} />
+        <Route path="/admin/departments" element={<AdminDepartments />} />
+        <Route path="/admin/users" element={<ManageUsers />} />
+        <Route path="/admin/profile" element={<AdminProfile />} />
       </Routes>
     </BrowserRouter>
   );

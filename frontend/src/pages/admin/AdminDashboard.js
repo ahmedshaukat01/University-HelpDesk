@@ -31,17 +31,17 @@ export default function AdminDashboard() {
                         <h3 style={styles.cardTitle}>Generate Reports</h3>
                         <p style={styles.cardSub}>View department analytics</p>
                     </div>
-                    <div style={styles.card}>
-                        <h3 style={styles.cardTitle}>Manage Reports</h3>
-                        <p style={styles.cardSub}>Coming soon</p>
+                    <div style={{ ...styles.card, cursor: 'pointer' }} onClick={() => navigate('/admin/departments')}>
+                        <h3 style={styles.cardTitle}>Manage Departments</h3>
+                        <p style={styles.cardSub}>View and edit department names</p>
                     </div>
-                    <div style={styles.card}>
+                    <div style={{ ...styles.card, cursor: 'pointer' }} onClick={() => navigate('/admin/users')}>
                         <h3 style={styles.cardTitle}>Manage Users</h3>
-                        <p style={styles.cardSub}>Coming soon</p>
+                        <p style={styles.cardSub}>Add, view and deactivate users</p>
                     </div>
-                    <div style={styles.card}>
+                    <div style={{ ...styles.card, cursor: 'pointer' }} onClick={() => navigate('/admin/profile')}>
                         <h3 style={styles.cardTitle}>Change Personal Info</h3>
-                        <p style={styles.cardSub}>Coming soon</p>
+                        <p style={styles.cardSub}>Update your profile details</p>
                     </div>
                 </div>
             </div>

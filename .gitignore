@@ -1,2 +1,14 @@
-node_modules/
+# frontend
+frontend/node_modules/
+frontend/build/
+
+# backend
+backend/node_modules/
+
+# environment files
 .env
+backend/.env
+frontend/.env
+
+# logs
+npm-debug.log*

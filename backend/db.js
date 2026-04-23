@@ -248,6 +248,120 @@ const getDepartmentWiseReport = async () => {
     return await executeQuery(query, []);
 };
 
+const updateDepartmentName = async (departmentId, newName) => {
+    const query = `
+        DECLARE @ResultCode    INT,
+                @ResultMessage VARCHAR(200);
+
+        EXEC UpdateDepartmentName
+            @DepartmentId  = @DepartmentId,
+            @NewName       = @NewName,
+            @ResultCode    = @ResultCode    OUTPUT,
+            @ResultMessage = @ResultMessage OUTPUT;
+
+        SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
+    `;
+    const parameters = [
+        { name: 'DepartmentId', type: TYPES.Int,     value: parseInt(departmentId) },
+        { name: 'NewName',      type: TYPES.VarChar, value: newName },
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const getUsersAdmin = async () => {
+    const query = `EXEC GetUsersAdmin;`;
+    return await executeQuery(query, []);
+};
+
+const addUserAdmin = async (data) => {
+    const query = `
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
+        EXEC AddUserAdmin
+            @Role = @Role,
+            @Name = @Name,
+            @Email = @Email,
+            @Password = @Password,
+            @Phone = @Phone,
+            @DepartmentId = @DepartmentId,
+            @ResultCode = @ResultCode OUTPUT,
+            @ResultMessage = @ResultMessage OUTPUT;
+        SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
+    `;
+    const parameters = [
+        { name: 'Role', type: TYPES.VarChar, value: data.role },
+        { name: 'Name', type: TYPES.VarChar, value: data.name },
+        { name: 'Email', type: TYPES.VarChar, value: data.email },
+        { name: 'Password', type: TYPES.VarChar, value: data.password },
+        { name: 'Phone', type: TYPES.VarChar, value: data.phone || null },
+        { name: 'DepartmentId', type: TYPES.Int, value: data.departmentId ? parseInt(data.departmentId) : null },
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const deactivateUserAdmin = async (id, role) => {
+    const query = `
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
+        EXEC DeactivateUserAdmin
+            @Id = @Id,
+            @Role = @Role,
+            @ResultCode = @ResultCode OUTPUT,
+            @ResultMessage = @ResultMessage OUTPUT;
+        SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
+    `;
+    const parameters = [
+        { name: 'Id', type: TYPES.Int, value: parseInt(id) },
+        { name: 'Role', type: TYPES.VarChar, value: role },
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const activateUserAdmin = async (id, role) => {
+    const query = `
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
+        EXEC ActivateUserAdmin
+            @Id = @Id,
+            @Role = @Role,
+            @ResultCode = @ResultCode OUTPUT,
+            @ResultMessage = @ResultMessage OUTPUT;
+        SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
+    `;
+    const parameters = [
+        { name: 'Id', type: TYPES.Int, value: parseInt(id) },
+        { name: 'Role', type: TYPES.VarChar, value: role },
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const getAdminProfile = async (adminId) => {
+    const query = `EXEC GetAdminProfile @AdminId = @AdminId;`;
+    const parameters = [
+        { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) }
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const updateAdminProfile = async (adminId, name, phone, password) => {
+    const query = `
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
+        EXEC UpdateAdminProfile
+            @AdminId = @AdminId,
+            @Name = @Name,
+            @Phone = @Phone,
+            @Password = @Password,
+            @ResultCode = @ResultCode OUTPUT,
+            @ResultMessage = @ResultMessage OUTPUT;
+        SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
+    `;
+    const parameters = [
+        { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) },
+        { name: 'Name', type: TYPES.VarChar, value: name },
+        { name: 'Phone', type: TYPES.VarChar, value: phone },
+        { name: 'Password', type: TYPES.VarChar, value: password || null }
+    ];
+    return await executeQuery(query, parameters);
+};
+
+
 module.exports = {
     registerStudent,
     getDepartments,
@@ -259,4 +373,11 @@ module.exports = {
     updateComplaintStatus,
     getComplaintHistory,
     getDepartmentWiseReport,
+    updateDepartmentName,
+    getUsersAdmin,
+    addUserAdmin,
+    deactivateUserAdmin,
+    activateUserAdmin,
+    getAdminProfile,
+    updateAdminProfile
 };

@@ -2,7 +2,24 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const cors = require('cors');
-const { getDepartments, registerStudent, loginUser, adminLogin, getComplaintsForAdmin, updateComplaintPriority, updateComplaintStatus, getComplaintHistory, getDepartmentWiseReport } = require('./db');
+const {
+    getDepartments,
+    registerStudent,
+    loginUser,
+    adminLogin,
+    getComplaintsForAdmin,
+    getDepartmentWiseReport,
+    updateDepartmentName,
+    getUsersAdmin,
+    addUserAdmin,
+    deactivateUserAdmin,
+    activateUserAdmin,
+    getAdminProfile,
+    updateAdminProfile,
+    updateComplaintPriority,
+    updateComplaintStatus,
+    getComplaintHistory
+} = require('./db');
 const bcrypt = require('bcrypt');
 const app = express();
 const PORT = 5000;
@@ -217,6 +234,118 @@ app.get('/api/admin/reports/departments', requireAuth(['Admin']), async (req, re
         res.status(200).json(result);
     } catch (error) {
         console.error('Error fetching department reports:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// ── Admin: Update Department Name ──────────────────────────────────────────────
+app.patch('/api/admin/departments/:id', requireAuth(['Admin']), async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || name.trim() === '') {
+        return res.status(400).json({ error: 'Department name is required' });
+    }
+    try {
+        const result = await updateDepartmentName(id, name.trim());
+        const { ResultCode, ResultMessage } = result[0] ?? {};
+        if (ResultCode === 0) return res.status(200).json({ message: ResultMessage });
+        return res.status(400).json({ error: ResultMessage });
+    } catch (error) {
+        console.error('Error updating department name:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// ── Admin: Get all users ───────────────────────────────────────────────────────
+app.get('/api/admin/users', requireAuth(['Admin']), async (req, res) => {
+    try {
+        const result = await getUsersAdmin();
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// ── Admin: Add a user ──────────────────────────────────────────────────────────
+app.post('/api/admin/users', requireAuth(['Admin']), async (req, res) => {
+    const { role, name, email, password, phone, departmentId } = req.body;
+    if (!role || !name || !email || !password) {
+        return res.status(400).json({ error: 'Role, name, email, and password are required' });
+    }
+    try {
+        const result = await addUserAdmin({ role, name, email, password, phone, departmentId });
+        const { ResultCode, ResultMessage } = result[0] ?? {};
+        if (ResultCode === 0) return res.status(201).json({ message: ResultMessage });
+        return res.status(400).json({ error: ResultMessage });
+    } catch (error) {
+        console.error('Error adding user:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// ── Admin: Deactivate a user ───────────────────────────────────────────────────
+app.delete('/api/admin/users/:id', requireAuth(['Admin']), async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.query; // pass ?role=Student or ?role=Staff
+    if (!role) {
+        return res.status(400).json({ error: 'Role query parameter is required' });
+    }
+    try {
+        const result = await deactivateUserAdmin(id, role);
+        const { ResultCode, ResultMessage } = result[0] ?? {};
+        if (ResultCode === 0) return res.status(200).json({ message: ResultMessage });
+        return res.status(400).json({ error: ResultMessage });
+    } catch (error) {
+        console.error('Error deactivating user:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// ── Admin: Activate a user ─────────────────────────────────────────────────────
+app.patch('/api/admin/users/:id/activate', requireAuth(['Admin']), async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.query; // pass ?role=Student or ?role=Staff
+    if (!role) {
+        return res.status(400).json({ error: 'Role query parameter is required' });
+    }
+    try {
+        const result = await activateUserAdmin(id, role);
+        const { ResultCode, ResultMessage } = result[0] ?? {};
+        if (ResultCode === 0) return res.status(200).json({ message: ResultMessage });
+        return res.status(400).json({ error: ResultMessage });
+    } catch (error) {
+        console.error('Error activating user:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.get('/api/admin/profile', requireAuth(['Admin']), async (req, res) => {
+    try {
+        const result = await getAdminProfile(req.user.userId);
+        if (result && result.length > 0) {
+            res.status(200).json(result[0]);
+        } else {
+            res.status(404).json({ error: 'Profile not found' });
+        }
+    } catch (error) {
+        console.error('Error fetching admin profile:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.patch('/api/admin/profile', requireAuth(['Admin']), async (req, res) => {
+    const { name, phone, password } = req.body;
+    if (!name || !phone) {
+        return res.status(400).json({ error: 'Name and phone are required' });
+    }
+    try {
+        const result = await updateAdminProfile(req.user.userId, name, phone, password);
+        const { ResultCode, ResultMessage } = result[0] ?? {};
+        if (ResultCode === 0) return res.status(200).json({ message: ResultMessage });
+        return res.status(400).json({ error: ResultMessage });
+    } catch (error) {
+        console.error('Error updating admin profile:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
