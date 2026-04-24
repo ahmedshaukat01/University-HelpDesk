@@ -22,6 +22,7 @@ export default function ManageComplaints() {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [majorIncidents, setMajorIncidents] = useState([]);
 
   // Filters for Assigned tab
   const [filterDept, setFilterDept] = useState('');
@@ -49,6 +50,15 @@ export default function ManageComplaints() {
     }
   };
 
+  const fetchMajorIncidents = async () => {
+    try {
+      const res = await axios.get('/api/admin/complaints', { params: { filter: 'all' }, withCredentials: true });
+      setMajorIncidents(res.data.filter(c => c.is_major_incident));
+    } catch (err) {
+      console.error('Error fetching major incidents:', err);
+    }
+  };
+
   const handleAssign = async (complaintId, staffId) => {
     setUpdatingId(complaintId);
     try {
@@ -68,14 +78,24 @@ export default function ManageComplaints() {
     setError('');
     try {
       const params = {};
-      if (activeTab === 'unassigned') params.filter = 'unassigned';
-      else if (activeTab === 'assigned') {
+      // If we are on starred tab, we fetch 'all' and filter locally to bypass SQL issues
+      const effectiveFilter = activeTab === 'starred' ? 'all' : activeTab;
+
+      if (effectiveFilter === 'unassigned') params.filter = 'unassigned';
+      else if (effectiveFilter === 'assigned') {
         params.filter = 'assigned';
         if (filterDept) params.departmentId = filterDept;
         if (filterPriority) params.priority = filterPriority;
       }
+
       const res = await axios.get('/api/admin/complaints', { params, withCredentials: true });
-      setComplaints(res.data);
+      
+      if (activeTab === 'starred') {
+        // Show both manually starred items AND Major Incidents in the Watchlist
+        setComplaints(res.data.filter(c => c.is_starred || c.is_major_incident));
+      } else {
+        setComplaints(res.data);
+      }
     } catch (err) {
       setError('Failed to load complaints. ' + (err.response?.data?.error || err.message));
     } finally {
@@ -87,12 +107,13 @@ export default function ManageComplaints() {
   useEffect(() => {
     axios.get('/api/departments', { withCredentials: true })
       .then(r => setDepartments(r.data))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
     fetchComplaints();
     fetchAllStaff();
+    fetchMajorIncidents();
   }, [fetchComplaints]);
 
   // Update complain priority
@@ -146,6 +167,47 @@ export default function ManageComplaints() {
     }
   };
 
+  const handleToggleStar = async (complaintId) => {
+    try {
+      await axios.patch(`/api/admin/complaints/${complaintId}/star`, {}, { withCredentials: true });
+      if (activeTab === 'starred') {
+        setComplaints(prev => prev.filter(c => c.complaint_id !== complaintId));
+      } else {
+        setComplaints(prev => prev.map(c =>
+          c.complaint_id === complaintId ? { ...c, is_starred: !c.is_starred } : c
+        ));
+      }
+    } catch (err) {
+      console.error('Error toggling star:', err);
+    }
+  };
+
+  const handleMarkMajor = async (complaintId) => {
+    try {
+      await axios.patch(`/api/admin/complaints/${complaintId}/major-incident`, {}, { withCredentials: true });
+      setComplaints(prev => prev.map(c =>
+        c.complaint_id === complaintId ? { ...c, is_major_incident: true } : c
+      ));
+      fetchMajorIncidents(); // Refresh the list for dropdowns
+      alert('Marked as Major Incident (STAR)');
+    } catch (err) {
+      alert('Failed to mark as major incident');
+    }
+  };
+
+  const handleCluster = async (childId, parentId) => {
+    if (!parentId) return;
+    try {
+      await axios.patch(`/api/admin/complaints/${childId}/cluster`, { parentId }, { withCredentials: true });
+      setComplaints(prev => prev.map(c =>
+        c.complaint_id === childId ? { ...c, parent_complaint_id: parentId, status: 'In-Progress' } : c
+      ));
+      alert('Complaint clustered successfully');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to cluster complaint');
+    }
+  };
+
   const handleLogout = async () => {
     await axios.post('/api/logout', {}, { withCredentials: true });
     navigate('/admin/login');
@@ -181,13 +243,13 @@ export default function ManageComplaints() {
 
         {/* ── Tab buttons ── */}
         <div style={S.tabRow}>
-          {['all', 'unassigned', 'assigned'].map(tab => (
+          {['all', 'unassigned', 'assigned', 'starred'].map(tab => (
             <button
               key={tab}
               style={activeTab === tab ? { ...S.tab, ...S.tabActive } : S.tab}
               onClick={() => { setActiveTab(tab); setFilterDept(''); setFilterPriority(''); }}
             >
-              {tab === 'all' ? '📋 All' : tab === 'unassigned' ? '🔴 Unassigned' : '✅ Assigned'}
+              {tab === 'all' ? '📋 All' : tab === 'unassigned' ? '🔴 Unassigned' : tab === 'assigned' ? '✅ Assigned' : '⭐ Watchlist'}
             </button>
           ))}
         </div>
@@ -244,6 +306,10 @@ export default function ManageComplaints() {
                 onHistory={openHistory}
                 allStaff={allStaff}
                 onAssign={handleAssign}
+                onToggleStar={handleToggleStar}
+                onMarkMajor={handleMarkMajor}
+                onCluster={handleCluster}
+                majorIncidents={majorIncidents}
               />
             ))}
           </div>
@@ -309,10 +375,23 @@ export default function ManageComplaints() {
 }
 
 // ── Complaint Card ──────────────────────────────────────────────────────────────
-function ComplaintCard({ c, updatingId, updateMsg, onPriorityChange, onStatusChange, onHistory, allStaff, onAssign }) {
+function ComplaintCard({
+  c,
+  updatingId,
+  updateMsg,
+  onPriorityChange,
+  onStatusChange,
+  onHistory,
+  allStaff,
+  onAssign,
+  onToggleStar,
+  onMarkMajor,
+  onCluster,
+  majorIncidents
+}) {
   const priColor = PRIORITY_COLORS[c.priority] || PRIORITY_COLORS.Medium;
-  const stColor  = STATUS_COLORS[c.status]     || STATUS_COLORS.Pending;
-  const msg      = updateMsg[c.complaint_id];
+  const stColor = STATUS_COLORS[c.status] || STATUS_COLORS.Pending;
+  const msg = updateMsg[c.complaint_id];
 
   // Filter staff for THIS complaint's department
   const deptStaff = allStaff.filter(s => Number(s.department_id) === Number(c.department_id));
@@ -321,21 +400,30 @@ function ComplaintCard({ c, updatingId, updateMsg, onPriorityChange, onStatusCha
     <div style={S.card}>
       {/* Top row */}
       <div style={S.cardTop}>
-        <span style={S.cid}>#{c.complaint_id}</span>
-        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={S.cid}>#{c.complaint_id}</span>
+          <button
+            style={{ ...S.starBtn, color: c.is_starred ? '#f59e0b' : '#334155' }}
+            onClick={() => onToggleStar(c.complaint_id)}
+          >
+            {c.is_starred ? '★' : '☆'}
+          </button>
+        </div>
+
         <div style={S.statusControl}>
-           <select
-              style={{ ...S.statusSelect, background: stColor.bg, color: stColor.text }}
-              value={c.status}
-              disabled={updatingId === c.complaint_id}
-              onChange={e => onStatusChange(c.complaint_id, e.target.value)}
-            >
-              <option value="Pending">Pending</option>
-              <option value="In-Progress">In-Progress</option>
-              <option value="Resolved">Resolved</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Reopened">Reopened</option>
-            </select>
+          {c.is_major_incident && <span style={S.majorBadge}>⭐ STAR INCIDENT</span>}
+          <select
+            style={{ ...S.statusSelect, background: stColor.bg, color: stColor.text }}
+            value={c.status}
+            disabled={updatingId === c.complaint_id}
+            onChange={e => onStatusChange(c.complaint_id, e.target.value)}
+          >
+            <option value="Pending">Pending</option>
+            <option value="In-Progress">In-Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Reopened">Reopened</option>
+          </select>
         </div>
       </div>
 
@@ -362,26 +450,49 @@ function ComplaintCard({ c, updatingId, updateMsg, onPriorityChange, onStatusCha
       {/* Assigned to / Assignment Control */}
       {c.assigned_to_staff_name ? (
         <p style={S.assignedTo}>🔧 Assigned to: <strong>{c.assigned_to_staff_name}</strong></p>
+      ) : c.parent_complaint_id ? (
+        <p style={S.clusteredTo}>🔗 Clustered with STAR #{c.parent_complaint_id}</p>
       ) : (
         <div style={S.assignBox}>
-            <span style={S.assignLabel}>Unassigned - Assign to:</span>
-            <select 
-                style={S.assignSelect} 
-                onChange={(e) => onAssign(c.complaint_id, e.target.value)}
-                disabled={updatingId === c.complaint_id}
-                value=""
-            >
-                <option value="" disabled>Select Staff...</option>
-                {deptStaff.length > 0 ? (
-                  deptStaff.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))
-                ) : (
-                  <option disabled>No staff in this department</option>
-                )}
-            </select>
+          <span style={S.assignLabel}>Unassigned - Assign to:</span>
+          <select
+            style={S.assignSelect}
+            onChange={(e) => onAssign(c.complaint_id, e.target.value)}
+            disabled={updatingId === c.complaint_id}
+            value=""
+          >
+            <option value="" disabled>Select Staff...</option>
+            {deptStaff.length > 0 ? (
+              deptStaff.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))
+            ) : (
+              <option disabled>No staff in this department</option>
+            )}
+          </select>
         </div>
       )}
+
+      {/* ── STAR Clustering Controls ── */}
+      <div style={S.starControls}>
+        {!c.is_major_incident && !c.parent_complaint_id && (
+          <>
+            <button style={S.markMajorBtn} onClick={() => onMarkMajor(c.complaint_id)}>
+              Mark as STAR
+            </button>
+            <select
+              style={S.clusterSelect}
+              onChange={(e) => onCluster(c.complaint_id, e.target.value)}
+              value=""
+            >
+              <option value="" disabled>Cluster with...</option>
+              {majorIncidents.filter(m => m.complaint_id !== c.complaint_id).map(m => (
+                <option key={m.complaint_id} value={m.complaint_id}>STAR #{m.complaint_id}: {m.title}</option>
+              ))}
+            </select>
+          </>
+        )}
+      </div>
 
       {/* ── Priority changer ── */}
       <div style={S.priorityRow}>
@@ -399,7 +510,7 @@ function ComplaintCard({ c, updatingId, updateMsg, onPriorityChange, onStatusCha
             <option value="Medium">🟡 Medium</option>
             <option value="Low">🟢 Low</option>
           </select>
-          {msg === 'ok'  && <span style={S.updateOk}>✓ Updated</span>}
+          {msg === 'ok' && <span style={S.updateOk}>✓ Updated</span>}
           {msg === 'err' && <span style={S.updateErr}>✗ Failed</span>}
         </div>
       </div>
@@ -461,6 +572,14 @@ const S = {
   assignBox: { margin: '0 0 1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' },
   assignLabel: { fontSize: '11px', color: '#f87171', fontWeight: '600' },
   assignSelect: { background: '#111827', color: '#f1f5f9', border: '1px solid #f59e0b', borderRadius: '8px', padding: '6px', fontSize: '12px', cursor: 'pointer', outline: 'none' },
+
+  // Star controls
+  starBtn: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' },
+  majorBadge: { background: '#f59e0b', color: '#0a0f1e', fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '4px', marginRight: '8px' },
+  starControls: { display: 'flex', gap: '8px', marginBottom: '1rem' },
+  markMajorBtn: { flex: 1, padding: '6px', fontSize: '11px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' },
+  clusterSelect: { flex: 1, background: '#111827', color: '#94a3b8', border: '1px solid #1e2d47', borderRadius: '6px', padding: '6px', fontSize: '11px', cursor: 'pointer' },
+  clusteredTo: { fontSize: '12px', color: '#a78bfa', margin: '0 0 0.75rem', fontWeight: '600' },
 
   // Priority
   priorityRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0.75rem 0 0.75rem', gap: '0.5rem', flexWrap: 'wrap' },

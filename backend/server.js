@@ -2,6 +2,8 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const cookieParser = require('cookie-parser');
 const {
     getDepartments,
     registerStudent,
@@ -37,12 +39,17 @@ const {
     getStudentNotifications,
     getStudentProfile,
     updateStudentProfile,
-    getAdminNotifications
+    getAdminNotifications,
+    getReopenRequests,
+    handleReopenRequest,
+    toggleComplaintStar,
+    markAsMajorIncident,
+    clusterComplaint
 } = require('./db');
-const bcrypt = require('bcrypt');
+
 const app = express();
 const PORT = 5000;
-const cookieParser = require('cookie-parser');
+
 app.use(cookieParser());
 app.use(cors({
     origin: 'http://localhost:3000',
@@ -65,24 +72,23 @@ const requireAuth = (roles = []) => (req, res, next) => {
     }
 };
 
+// =============================================
+// AUTH & SHARED ROUTES
+// =============================================
+
 app.post("/api/register/student", async (req, res) => {
     const { name, email, password, phone, departmentId } = req.body;
-    if (!name || !email || !password || !phone) {
-        return res.status(400).json({ error: "Missing required fields" });
-    }
+    if (!name || !email || !password || !phone) return res.status(400).json({ error: "Missing required fields" });
     try {
         const result = await registerStudent({ name, email, password, phone, departmentId });
         const { ResultCode, ResultMessage, NewStudentId } = result[0];
-        if (ResultCode === 0) {
-            return res.status(201).json({ message: ResultMessage, studentId: NewStudentId });
-        } else {
-            return res.status(400).json({ error: ResultMessage });
-        }
+        if (ResultCode === 0) return res.status(201).json({ message: ResultMessage, studentId: NewStudentId });
+        return res.status(400).json({ error: ResultMessage });
     } catch (error) {
         console.error("Error registering student:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
-})
+});
 
 app.get("/api/departments", async (req, res) => {
     try {
@@ -100,13 +106,12 @@ app.post('/api/login', async (req, res) => {
     try {
         const result = await loginUser(email);
         const { ResultCode, UserId, Role, PasswordHash, Name, DepartmentId } = result[0];
-        if (ResultCode !== 0 || password !== PasswordHash) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
+        if (ResultCode !== 0 || password !== PasswordHash) return res.status(401).json({ error: 'Invalid email or password' });
+        
         const token = jwt.sign(
             { userId: UserId, role: Role, name: Name, departmentId: DepartmentId },
             process.env.JWT_SECRET,
-            { expiresIn: '1h' }
+            { expiresIn: '8h' }
         );
         res.cookie('token', token, {
             httpOnly: true,
@@ -126,26 +131,20 @@ app.post('/api/logout', (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
 });
 
+// =============================================
+// ADMIN ROUTES
+// =============================================
+
 app.post('/api/admin/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
     try {
         const result = await adminLogin(email);
         const { ResultCode, AdminId, PasswordHash, Name } = result[0];
-        if (ResultCode !== 0 || password !== PasswordHash) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
-        const token = jwt.sign(
-            { userId: AdminId, role: 'Admin', name: Name },
-            process.env.JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        if (ResultCode !== 0 || password !== PasswordHash) return res.status(401).json({ error: 'Invalid email or password' });
+        
+        const token = jwt.sign({ userId: AdminId, role: 'Admin', name: Name }, process.env.JWT_SECRET, { expiresIn: '8h' });
+        res.cookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 8 * 60 * 60 * 1000 });
         return res.status(200).json({ message: 'Admin login successful', role: 'Admin', name: Name });
     } catch (error) {
         console.error('Error during admin login:', error);
@@ -153,7 +152,6 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
-// ── Admin: Complaints ──────────────────────────────────────────────────────────
 app.get('/api/admin/complaints', requireAuth(['Admin']), async (req, res) => {
     const { filter = 'all', departmentId, priority } = req.query;
     try {
@@ -197,7 +195,7 @@ app.patch('/api/admin/complaints/:id/status', requireAuth(['Admin']), async (req
     }
 });
 
-app.get('/api/admin/complaints/:id/history', requireAuth(['Admin']), async (req, res) => {
+app.get('/api/admin/complaints/:id/history', requireAuth(['Admin', 'Staff']), async (req, res) => {
     const { id } = req.params;
     try {
         const result = await getComplaintHistory(id);
@@ -208,7 +206,6 @@ app.get('/api/admin/complaints/:id/history', requireAuth(['Admin']), async (req,
     }
 });
 
-// ── Admin: Reports & Departments ──────────────────────────────────────────────
 app.get('/api/admin/reports/departments', requireAuth(['Admin']), async (req, res) => {
     try {
         const result = await getDepartmentWiseReport();
@@ -234,7 +231,6 @@ app.patch('/api/admin/departments/:id', requireAuth(['Admin']), async (req, res)
     }
 });
 
-// ── Admin: Users ───────────────────────────────────────────────────────────────
 app.get('/api/admin/users', requireAuth(['Admin']), async (req, res) => {
     try {
         const result = await getUsersAdmin();
@@ -289,7 +285,6 @@ app.patch('/api/admin/users/:id/activate', requireAuth(['Admin']), async (req, r
     }
 });
 
-// ── Admin: Assignment Logic ──────────────────────────────────────────────────
 app.get('/api/admin/staff', requireAuth(['Admin']), async (req, res) => {
     const { departmentId } = req.query;
     if (!departmentId) return res.status(400).json({ error: 'departmentId is required' });
@@ -316,7 +311,6 @@ app.patch('/api/admin/complaints/:id/assign', requireAuth(['Admin']), async (req
     }
 });
 
-// ── Admin: Profile ────────────────────────────────────────────────────────────
 app.get('/api/admin/profile', requireAuth(['Admin']), async (req, res) => {
     try {
         const result = await getAdminProfile(req.user.userId);
@@ -352,6 +346,68 @@ app.get('/api/admin/notifications', requireAuth(['Admin']), async (req, res) => 
     }
 });
 
+app.get('/api/admin/reopen-requests', requireAuth(['Admin']), async (req, res) => {
+    try {
+        const result = await getReopenRequests();
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error fetching reopen requests:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.post('/api/admin/reopen-requests/:id/handle', requireAuth(['Admin']), async (req, res) => {
+    const { id } = req.params;
+    const { action } = req.body;
+    const adminId = req.user.userId;
+    if (!action) return res.status(400).json({ error: 'Action is required' });
+    try {
+        const result = await handleReopenRequest(id, adminId, action);
+        const { ResultCode, ResultMessage } = result[0] ?? {};
+        if (ResultCode === 0) return res.status(200).json({ message: ResultMessage });
+        return res.status(400).json({ error: ResultMessage });
+    } catch (error) {
+        console.error('Error handling reopen request:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.patch('/api/admin/complaints/:id/star', requireAuth(['Admin']), async (req, res) => {
+    const { id } = req.params;
+    try {
+        await toggleComplaintStar(id);
+        res.status(200).json({ message: 'Star toggled' });
+    } catch (error) {
+        console.error('Error toggling star:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.patch('/api/admin/complaints/:id/major-incident', requireAuth(['Admin']), async (req, res) => {
+    const { id } = req.params;
+    try {
+        await markAsMajorIncident(id);
+        res.status(200).json({ message: 'Marked as Major Incident' });
+    } catch (error) {
+        console.error('Error marking as major incident:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.patch('/api/admin/complaints/:id/cluster', requireAuth(['Admin']), async (req, res) => {
+    const { id } = req.params;
+    const { parentId } = req.body;
+    if (!parentId) return res.status(400).json({ error: 'parentId is required' });
+    try {
+        const result = await clusterComplaint(id, parentId);
+        if (result[0]?.ResultCode === 0) res.status(200).json({ message: 'Complaint clustered' });
+        else res.status(400).json({ error: 'Failed to cluster. Parent must be a Major Incident.' });
+    } catch (error) {
+        console.error('Error clustering complaint:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 app.patch('/api/admin/notifications/:id/read', requireAuth(['Admin']), async (req, res) => {
     const { id } = req.params;
     try {
@@ -363,7 +419,10 @@ app.patch('/api/admin/notifications/:id/read', requireAuth(['Admin']), async (re
     }
 });
 
-// ── Staff: Operations ─────────────────────────────────────────────────────────
+// =============================================
+// STAFF ROUTES
+// =============================================
+
 app.get('/api/staff/complaints', requireAuth(['Staff']), async (req, res) => {
     const { status } = req.query;
     try {
@@ -387,17 +446,6 @@ app.patch('/api/staff/complaints/:id/status', requireAuth(['Staff']), async (req
         return res.status(400).json({ error: ResultMessage });
     } catch (error) {
         console.error('Error updating staff status:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-app.get('/api/staff/complaints/:id/history', requireAuth(['Staff']), async (req, res) => {
-    const { id } = req.params;
-    try {
-        const result = await getComplaintHistory(id);
-        res.status(200).json(result);
-    } catch (error) {
-        console.error('Error fetching history:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -458,19 +506,19 @@ app.patch('/api/staff/notifications/:id/read', requireAuth(['Staff']), async (re
     }
 });
 
-// ── Student: Feedback ──────────────────────────────────────────────────────────
-app.post('/api/student/feedback', requireAuth(['Student']), async (req, res) => {
-    const { complaintId, rating, comments } = req.body;
-    const studentId = req.user.userId;
-    if (!complaintId || !rating) return res.status(400).json({ error: 'Required fields missing' });
+app.get('/api/staff/analytics', requireAuth(['Staff']), async (req, res) => {
     try {
-        await submitFeedback(complaintId, studentId, rating, comments);
-        res.status(201).json({ message: 'Feedback submitted successfully' });
+        const result = await getStaffAnalytics(req.user.userId);
+        res.status(200).json(result[0]);
     } catch (error) {
-        console.error('Error submitting feedback:', error);
+        console.error('Error fetching staff analytics:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+// =============================================
+// STUDENT ROUTES
+// =============================================
 
 app.get('/api/categories', async (req, res) => {
     const { departmentId } = req.query;
@@ -486,17 +534,12 @@ app.get('/api/categories', async (req, res) => {
 app.post('/api/student/complaints', requireAuth(['Student']), async (req, res) => {
     const { departmentId, categoryId, title, description, priority } = req.body;
     const studentId = req.user.userId;
-    if (!departmentId || !title || !description) {
-        return res.status(400).json({ error: 'Required fields missing' });
-    }
+    if (!departmentId || !title || !description) return res.status(400).json({ error: 'Required fields missing' });
     try {
         const result = await submitComplaint({ studentId, departmentId, categoryId, title, description, priority });
         const { ResultCode, ResultMessage, NewComplaintId } = result[0] ?? {};
-        if (ResultCode === 0) {
-            return res.status(201).json({ message: ResultMessage, complaintId: NewComplaintId });
-        } else {
-            return res.status(400).json({ error: ResultMessage });
-        }
+        if (ResultCode === 0) return res.status(201).json({ message: ResultMessage, complaintId: NewComplaintId });
+        return res.status(400).json({ error: ResultMessage });
     } catch (error) {
         console.error('Error submitting complaint:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -526,6 +569,19 @@ app.post('/api/student/complaints/:id/reopen', requireAuth(['Student']), async (
         return res.status(400).json({ error: ResultMessage });
     } catch (error) {
         console.error('Error reopening complaint:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.post('/api/student/feedback', requireAuth(['Student']), async (req, res) => {
+    const { complaintId, rating, comments } = req.body;
+    const studentId = req.user.userId;
+    if (!complaintId || !rating) return res.status(400).json({ error: 'Required fields missing' });
+    try {
+        await submitFeedback(complaintId, studentId, rating, comments);
+        res.status(201).json({ message: 'Feedback submitted successfully' });
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -568,23 +624,11 @@ app.put('/api/student/profile', requireAuth(['Student']), async (req, res) => {
     if (!name || !phoneNumber) return res.status(400).json({ error: 'Name and Phone Number are required' });
     try {
         let passwordHash = null;
-        if (password) {
-            passwordHash = await bcrypt.hash(password, 10);
-        }
+        if (password) passwordHash = await bcrypt.hash(password, 10);
         await updateStudentProfile({ studentId, name, phoneNumber, passwordHash });
         res.status(200).json({ message: 'Profile updated successfully' });
     } catch (error) {
         console.error('Error updating student profile:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-app.get('/api/staff/analytics', requireAuth(['Staff']), async (req, res) => {
-    try {
-        const result = await getStaffAnalytics(req.user.userId);
-        res.status(200).json(result[0]);
-    } catch (error) {
-        console.error('Error fetching staff analytics:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });

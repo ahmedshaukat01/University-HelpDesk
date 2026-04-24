@@ -1,5 +1,5 @@
 const { Connection, Request, TYPES } = require('tedious');
-const { VarChar } = require('msnodesqlv8');
+
 const config = {
     server: "localhost\\SQLEXPRESS",
     authentication: {
@@ -15,6 +15,11 @@ const config = {
         trustServerCertificate: true,
     },
 };
+
+// =============================================
+// CORE DATABASE EXECUTION
+// =============================================
+
 const executeQuery = (query, parameters = []) => {
     return new Promise((resolve, reject) => {
         const connection = new Connection(config);
@@ -30,7 +35,6 @@ const executeQuery = (query, parameters = []) => {
                     console.error('Query Error:', err);
                     return reject(err);
                 }
-                console.log(`Query executed successfully. Rows affected: ${rowCount}`);
                 connection.close();
             });
 
@@ -61,38 +65,7 @@ const executeQuery = (query, parameters = []) => {
         connection.connect();
     });
 };
-const registerStudent = async (data) => {
-    const query = `
-        DECLARE @NewStudentId  INT,
-                @ResultCode    INT,
-                @ResultMessage VARCHAR(255);
- 
-        EXEC RegisterStudent
-            @Name          = @Name,
-            @Email         = @Email,
-            @Password      = @Password,
-            @Phone         = @Phone,
-            @DepartmentId  = @DepartmentId,
-            @NewStudentId  = @NewStudentId  OUTPUT,
-            @ResultCode    = @ResultCode    OUTPUT,
-            @ResultMessage = @ResultMessage OUTPUT;
- 
-        SELECT
-            @NewStudentId  AS NewStudentId,
-            @ResultCode    AS ResultCode,
-            @ResultMessage AS ResultMessage;
-    `;
 
-    const parameters = [
-        { name: 'Name', type: TYPES.VarChar, value: data.name },
-        { name: 'Email', type: TYPES.VarChar, value: data.email },
-        { name: 'Password', type: TYPES.VarChar, value: data.password },
-        { name: 'Phone', type: TYPES.VarChar, value: data.phone },
-        { name: 'DepartmentId', type: TYPES.Int, value: data.departmentId ?? null },
-    ];
-
-    return await executeQuery(query, parameters);
-};
 const getDepartments = async () => {
     const query = `
         SELECT
@@ -101,9 +74,9 @@ const getDepartments = async () => {
         FROM Departments
         ORDER BY department_name;
     `;
-
-    return await executeQuery(query, []);   // no parameters needed for this query
+    return await executeQuery(query, []);
 };
+
 const loginUser = async (email) => {
     const query = `
         DECLARE @ResultCode    INT,
@@ -133,13 +106,20 @@ const loginUser = async (email) => {
             @Name          AS Name,
             @DepartmentId  AS DepartmentId;
     `;
-
-    const parameters = [
-        { name: 'Email', type: TYPES.VarChar, value: email }
-    ];
-
+    const parameters = [{ name: 'Email', type: TYPES.VarChar, value: email }];
     return await executeQuery(query, parameters);
 };
+
+const markNotificationAsRead = async (notificationId) => {
+    const query = 'EXEC MarkNotificationAsRead @NotificationId = @NotificationId';
+    const parameters = [{ name: 'NotificationId', type: TYPES.Int, value: parseInt(notificationId) }];
+    return await executeQuery(query, parameters);
+};
+
+// =============================================
+// ADMIN FUNCTIONS
+// =============================================
+
 const adminLogin = async (email) => {
     const query = `
         DECLARE @ResultCode    INT,
@@ -162,18 +142,12 @@ const adminLogin = async (email) => {
             @PasswordHash  AS PasswordHash,
             @Name          AS Name;
     `;
-
-    const parameters = [
-        { name: 'Email', type: TYPES.VarChar, value: email }
-    ];
-
+    const parameters = [{ name: 'Email', type: TYPES.VarChar, value: email }];
     return await executeQuery(query, parameters);
 };
+
 const getComplaintsForAdmin = async ({ filter = 'all', departmentId = null, priority = null } = {}) => {
     const query = `
-        DECLARE @ResultCode    INT,
-                @ResultMessage VARCHAR(200);
-
         EXEC GetComplaintsForAdmin
             @Filter       = @Filter,
             @DepartmentId = @DepartmentId,
@@ -189,16 +163,13 @@ const getComplaintsForAdmin = async ({ filter = 'all', departmentId = null, prio
 
 const updateComplaintPriority = async (complaintId, newPriority, adminId) => {
     const query = `
-        DECLARE @ResultCode    INT,
-                @ResultMessage VARCHAR(200);
-
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
         EXEC UpdateComplaintPriority
             @ComplaintId   = @ComplaintId,
             @NewPriority   = @NewPriority,
             @AdminId       = @AdminId,
             @ResultCode    = @ResultCode    OUTPUT,
             @ResultMessage = @ResultMessage OUTPUT;
-
         SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
     `;
     const parameters = [
@@ -211,16 +182,13 @@ const updateComplaintPriority = async (complaintId, newPriority, adminId) => {
 
 const updateComplaintStatus = async (complaintId, newStatus, adminId) => {
     const query = `
-        DECLARE @ResultCode    INT,
-                @ResultMessage VARCHAR(200);
-
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
         EXEC UpdateComplaintStatus
             @ComplaintId   = @ComplaintId,
             @NewStatus     = @NewStatus,
             @AdminId       = @AdminId,
             @ResultCode    = @ResultCode    OUTPUT,
             @ResultMessage = @ResultMessage OUTPUT;
-
         SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
     `;
     const parameters = [
@@ -232,33 +200,24 @@ const updateComplaintStatus = async (complaintId, newStatus, adminId) => {
 };
 
 const getComplaintHistory = async (complaintId) => {
-    const query = `
-        EXEC GetComplaintHistory @ComplaintId = @ComplaintId;
-    `;
-    const parameters = [
-        { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
-    ];
+    const query = `EXEC GetComplaintHistory @ComplaintId = @ComplaintId;`;
+    const parameters = [{ name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) }];
     return await executeQuery(query, parameters);
 };
 
 const getDepartmentWiseReport = async () => {
-    const query = `
-        EXEC GetDepartmentWiseReport;
-    `;
+    const query = `EXEC GetDepartmentWiseReport;`;
     return await executeQuery(query, []);
 };
 
 const updateDepartmentName = async (departmentId, newName) => {
     const query = `
-        DECLARE @ResultCode    INT,
-                @ResultMessage VARCHAR(200);
-
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
         EXEC UpdateDepartmentName
             @DepartmentId  = @DepartmentId,
             @NewName       = @NewName,
             @ResultCode    = @ResultCode    OUTPUT,
             @ResultMessage = @ResultMessage OUTPUT;
-
         SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
     `;
     const parameters = [
@@ -334,9 +293,7 @@ const activateUserAdmin = async (id, role) => {
 
 const getAdminProfile = async (adminId) => {
     const query = `EXEC GetAdminProfile @AdminId = @AdminId;`;
-    const parameters = [
-        { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) }
-    ];
+    const parameters = [{ name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) }];
     return await executeQuery(query, parameters);
 };
 
@@ -360,6 +317,90 @@ const updateAdminProfile = async (adminId, name, phone, password) => {
     ];
     return await executeQuery(query, parameters);
 };
+
+const assignComplaintToStaff = async (complaintId, staffId, adminId) => {
+    const query = 'EXEC AssignComplaintToStaff @ComplaintId = @ComplaintId, @StaffId = @StaffId, @AdminId = @AdminId';
+    const parameters = [
+        { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
+        { name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) },
+        { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) }
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const getStaffByDepartment = async (departmentId) => {
+    const query = 'SELECT staff_id, name FROM Staff WHERE department_id = @DepartmentId AND is_active = 1';
+    const parameters = [{ name: 'DepartmentId', type: TYPES.Int, value: parseInt(departmentId) }];
+    return await executeQuery(query, parameters);
+};
+
+const getAdminNotifications = async (adminId) => {
+    const query = 'EXEC GetAdminNotifications @AdminId = @AdminId';
+    const parameters = [{ name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) }];
+    return await executeQuery(query, parameters);
+};
+
+const getReopenRequests = async () => {
+    const query = 'EXEC GetReopenRequests';
+    return await executeQuery(query, []);
+};
+
+const handleReopenRequest = async (complaintId, adminId, action) => {
+    const query = `
+        DECLARE @ResultCode INT, @ResultMessage VARCHAR(200);
+        EXEC HandleReopenRequest
+            @ComplaintId = @ComplaintId,
+            @AdminId     = @AdminId,
+            @Action      = @Action,
+            @ResultCode  = @ResultCode OUTPUT,
+            @ResultMessage = @ResultMessage OUTPUT;
+        SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
+    `;
+    const parameters = [
+        { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
+        { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) },
+        { name: 'Action', type: TYPES.VarChar, value: action }
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const toggleComplaintStar = async (complaintId) => {
+    const id = parseInt(complaintId);
+    const query = `
+        DECLARE @ResultCode INT;
+        EXEC ToggleComplaintStar @ComplaintId = @Id, @ResultCode = @ResultCode OUTPUT;
+        SELECT @ResultCode AS ResultCode;
+    `;
+    const parameters = [{ name: 'Id', type: TYPES.Int, value: id }];
+    return await executeQuery(query, parameters);
+};
+
+const markAsMajorIncident = async (complaintId) => {
+    const query = `
+        DECLARE @ResultCode INT;
+        EXEC MarkAsMajorIncident @ComplaintId = @ComplaintId, @ResultCode = @ResultCode OUTPUT;
+        SELECT @ResultCode AS ResultCode;
+    `;
+    const parameters = [{ name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) }];
+    return await executeQuery(query, parameters);
+};
+
+const clusterComplaint = async (childId, parentId) => {
+    const query = `
+        DECLARE @ResultCode INT;
+        EXEC ClusterComplaint @ChildId = @ChildId, @ParentId = @ParentId, @ResultCode = @ResultCode OUTPUT;
+        SELECT @ResultCode AS ResultCode;
+    `;
+    const parameters = [
+        { name: 'ChildId', type: TYPES.Int, value: parseInt(childId) },
+        { name: 'ParentId', type: TYPES.Int, value: parseInt(parentId) }
+    ];
+    return await executeQuery(query, parameters);
+};
+
+// =============================================
+// STAFF FUNCTIONS
+// =============================================
 
 const getAssignedComplaintsForStaff = async (staffId, status = null) => {
     const query = `
@@ -432,58 +473,48 @@ const getStaffNotifications = async (staffId) => {
     return await executeQuery(query, parameters);
 };
 
-const markNotificationAsRead = async (notificationId) => {
-    const query = 'EXEC MarkNotificationAsRead @NotificationId = @NotificationId';
-    const parameters = [{ name: 'NotificationId', type: TYPES.Int, value: parseInt(notificationId) }];
-    return await executeQuery(query, parameters);
-};
-
-const assignComplaintToStaff = async (complaintId, staffId, adminId) => {
-    const query = 'EXEC AssignComplaintToStaff @ComplaintId = @ComplaintId, @StaffId = @StaffId, @AdminId = @AdminId';
-    const parameters = [
-        { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
-        { name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) },
-        { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) }
-    ];
-    return await executeQuery(query, parameters);
-};
-
 const getStaffAnalytics = async (staffId) => {
     const query = 'EXEC GetStaffAnalytics @StaffId';
-
-    const parameters = [
-        {
-            name: 'StaffId',
-            type: TYPES.Int,
-            value: parseInt(staffId)
-        }
-    ];
-
+    const parameters = [{ name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) }];
     return await executeQuery(query, parameters);
 };
 
-const getStaffByDepartment = async (departmentId) => {
-    const query = 'SELECT staff_id, name FROM Staff WHERE department_id = @DepartmentId AND is_active = 1';
-    const parameters = [{ name: 'DepartmentId', type: TYPES.Int, value: parseInt(departmentId) }];
-    return await executeQuery(query, parameters);
-};
+// =============================================
+// STUDENT FUNCTIONS
+// =============================================
 
-const submitFeedback = async (complaintId, studentId, rating, comments) => {
-    const query = 'EXEC SubmitFeedback @ComplaintId = @ComplaintId, @StudentId = @StudentId, @Rating = @Rating, @Comments = @Comments';
+const registerStudent = async (data) => {
+    const query = `
+        DECLARE @NewStudentId  INT,
+                @ResultCode    INT,
+                @ResultMessage VARCHAR(255);
+        EXEC RegisterStudent
+            @Name          = @Name,
+            @Email         = @Email,
+            @Password      = @Password,
+            @Phone         = @Phone,
+            @DepartmentId  = @DepartmentId,
+            @NewStudentId  = @NewStudentId  OUTPUT,
+            @ResultCode    = @ResultCode    OUTPUT,
+            @ResultMessage = @ResultMessage OUTPUT;
+        SELECT
+            @NewStudentId  AS NewStudentId,
+            @ResultCode    AS ResultCode,
+            @ResultMessage AS ResultMessage;
+    `;
     const parameters = [
-        { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
-        { name: 'StudentId', type: TYPES.Int, value: parseInt(studentId) },
-        { name: 'Rating', type: TYPES.Int, value: parseInt(rating) },
-        { name: 'Comments', type: TYPES.Text, value: comments }
+        { name: 'Name', type: TYPES.VarChar, value: data.name },
+        { name: 'Email', type: TYPES.VarChar, value: data.email },
+        { name: 'Password', type: TYPES.VarChar, value: data.password },
+        { name: 'Phone', type: TYPES.VarChar, value: data.phone },
+        { name: 'DepartmentId', type: TYPES.Int, value: data.departmentId ?? null },
     ];
     return await executeQuery(query, parameters);
 };
 
 const getComplaintCategories = async (departmentId = null) => {
     const query = `EXEC GetComplaintCategories @DepartmentId = @DepartmentId;`;
-    const parameters = [
-        { name: 'DepartmentId', type: TYPES.Int, value: departmentId ? parseInt(departmentId) : null }
-    ];
+    const parameters = [{ name: 'DepartmentId', type: TYPES.Int, value: departmentId ? parseInt(departmentId) : null }];
     return await executeQuery(query, parameters);
 };
 
@@ -515,9 +546,7 @@ const submitComplaint = async (data) => {
 
 const getStudentComplaints = async (studentId) => {
     const query = `EXEC GetStudentComplaints @StudentId = @StudentId;`;
-    const parameters = [
-        { name: 'StudentId', type: TYPES.Int, value: parseInt(studentId) }
-    ];
+    const parameters = [{ name: 'StudentId', type: TYPES.Int, value: parseInt(studentId) }];
     return await executeQuery(query, parameters);
 };
 
@@ -536,6 +565,17 @@ const reopenComplaint = async (complaintId, studentId, remarks) => {
         { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
         { name: 'StudentId', type: TYPES.Int, value: parseInt(studentId) },
         { name: 'Remarks', type: TYPES.Text, value: remarks }
+    ];
+    return await executeQuery(query, parameters);
+};
+
+const submitFeedback = async (complaintId, studentId, rating, comments) => {
+    const query = 'EXEC SubmitFeedback @ComplaintId = @ComplaintId, @StudentId = @StudentId, @Rating = @Rating, @Comments = @Comments';
+    const parameters = [
+        { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
+        { name: 'StudentId', type: TYPES.Int, value: parseInt(studentId) },
+        { name: 'Rating', type: TYPES.Int, value: parseInt(rating) },
+        { name: 'Comments', type: TYPES.Text, value: comments }
     ];
     return await executeQuery(query, parameters);
 };
@@ -563,18 +603,12 @@ const updateStudentProfile = async (data) => {
     return await executeQuery(query, parameters);
 };
 
-const getAdminNotifications = async (adminId) => {
-    const query = 'EXEC GetAdminNotifications @AdminId = @AdminId';
-    const parameters = [{ name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) }];
-    return await executeQuery(query, parameters);
-};
-
 module.exports = {
-    registerStudent,
+    executeQuery,
     getDepartments,
     loginUser,
+    markNotificationAsRead,
     adminLogin,
-    executeQuery,
     getComplaintsForAdmin,
     updateComplaintPriority,
     updateComplaintStatus,
@@ -587,23 +621,28 @@ module.exports = {
     activateUserAdmin,
     getAdminProfile,
     updateAdminProfile,
+    assignComplaintToStaff,
+    getStaffByDepartment,
+    getAdminNotifications,
+    getReopenRequests,
+    handleReopenRequest,
+    toggleComplaintStar,
+    markAsMajorIncident,
+    clusterComplaint,
     getAssignedComplaintsForStaff,
     updateStaffComplaintStatus,
     getStaffProfile,
     updateStaffProfile,
     getStaffFeedback,
     getStaffNotifications,
-    markNotificationAsRead,
-    assignComplaintToStaff,
-    getStaffByDepartment,
-    submitFeedback,
     getStaffAnalytics,
+    registerStudent,
     getComplaintCategories,
     submitComplaint,
     getStudentComplaints,
     reopenComplaint,
+    submitFeedback,
     getStudentNotifications,
     getStudentProfile,
-    updateStudentProfile,
-    getAdminNotifications
+    updateStudentProfile
 };

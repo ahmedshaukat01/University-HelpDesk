@@ -39,7 +39,7 @@ export default function MyComplaints() {
         setReopenLoading(true);
         try {
             await axios.post(`/api/student/complaints/${reopenId}/reopen`, { remarks: reopenRemarks }, { withCredentials: true });
-            alert('Complaint reopened successfully');
+            alert('Reopen request submitted successfully. Waiting for admin approval.');
             setReopenId(null);
             setReopenRemarks('');
             fetchComplaints();
@@ -77,6 +77,7 @@ export default function MyComplaints() {
             case 'Resolved':    return '#10b981';
             case 'Rejected':    return '#f87171';
             case 'Reopened':    return '#8b5cf6';
+            case 'Reopen-Requested': return '#6366f1';
             default:            return '#94a3b8';
         }
     };
@@ -143,6 +144,9 @@ export default function MyComplaints() {
                                                 >
                                                     Reopen
                                                 </button>
+                                            )}
+                                            {complaint.status === 'Reopen-Requested' && (
+                                                <span style={{ color: '#6366f1', fontSize: '12px', fontStyle: 'italic' }}>Pending Approval</span>
                                             )}
                                             {complaint.status === 'Resolved' && (
                                                 <button 

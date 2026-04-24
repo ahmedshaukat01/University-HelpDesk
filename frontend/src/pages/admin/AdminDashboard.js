@@ -100,6 +100,10 @@ export default function AdminDashboard() {
                         <h3 style={styles.cardTitle}>Manage Users</h3>
                         <p style={styles.cardSub}>Add, view and deactivate users</p>
                     </div>
+                    <div style={{ ...styles.card, cursor: 'pointer' }} onClick={() => navigate('/admin/reopen-requests')}>
+                        <h3 style={styles.cardTitle}>Reopen Requests</h3>
+                        <p style={styles.cardSub}>Review student reopen requests</p>
+                    </div>
                     <div style={{ ...styles.card, cursor: 'pointer' }} onClick={() => navigate('/admin/profile')}>
                         <h3 style={styles.cardTitle}>Change Personal Info</h3>
                         <p style={styles.cardSub}>Update your profile details</p>
