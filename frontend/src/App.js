@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import HomePage from "./pages/HomePage";
 import StudentRegister from "./pages/StudentRegister";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
@@ -23,7 +24,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<h1>Home</h1>} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/register" element={<StudentRegister />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin/login" element={<AdminLogin />} />

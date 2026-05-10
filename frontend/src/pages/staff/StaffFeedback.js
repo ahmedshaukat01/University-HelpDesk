@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Star, ClipboardList } from '../../components/Icons';
 
 export default function StaffFeedback() {
     const navigate = useNavigate();
@@ -13,72 +14,77 @@ export default function StaffFeedback() {
             try {
                 const res = await axios.get('/api/staff/feedback', { withCredentials: true });
                 setFeedback(res.data);
-                setLoading(false);
             } catch (err) {
                 console.error(err);
                 setError('Failed to fetch feedback.');
+            } finally {
                 setLoading(false);
             }
         };
         fetchFeedback();
     }, []);
 
-    const renderStars = (rating) => {
-        return '⭐'.repeat(rating);
-    };
+    const renderStars = (rating) => (
+        <div className="flex gap-0.5">
+            {[1, 2, 3, 4, 5].map(num => (
+                <Star key={num} size={14} fill={num <= rating ? 'currentColor' : 'none'} className={num <= rating ? 'text-amber-400' : 'text-slate-600'} />
+            ))}
+        </div>
+    );
 
-    if (loading) return <div style={styles.page}><p>Loading feedback...</p></div>;
+    if (loading) return (
+        <div className="min-h-screen bg-sr-dark flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                <p className="text-slate-400 font-medium">Loading feedback...</p>
+            </div>
+        </div>
+    );
 
     return (
-        <div style={styles.page}>
-            <div style={styles.header}>
-                <h2 style={styles.heading}>Student Feedback</h2>
-                <button style={styles.backBtn} onClick={() => navigate('/staff/dashboard')}>
-                    Back to Dashboard
-                </button>
+        <div className="min-h-screen bg-sr-dark p-4 sm:p-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">Student Feedback</h1>
+                        <p className="text-slate-400 text-sm">Ratings and comments from students you helped.</p>
+                    </div>
+                    <button
+                        id="feedback-back-btn"
+                        className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl font-medium transition-colors"
+                        onClick={() => navigate('/staff/dashboard')}
+                    >
+                        ← Back to Dashboard
+                    </button>
+                </div>
+
+                {error && <p className="text-red-400 text-sm mb-6 bg-red-500/10 border border-red-500/20 p-4 rounded-xl">{error}</p>}
+
+                {feedback.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-16 bg-white/[0.03] border border-white/[0.06] rounded-3xl">
+                        <ClipboardList size={64} className="text-slate-700 mb-6" />
+                        <p className="text-slate-500 font-medium text-lg">No feedback received yet.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {feedback.map((f) => (
+                            <div key={f.feedback_id} className="bg-white/[0.03] border border-emerald-500/20 rounded-2xl p-6 flex flex-col gap-4 hover:bg-white/[0.06] transition-all hover:shadow-lg hover:shadow-emerald-500/10">
+                                <div className="flex justify-between items-start gap-4">
+                                    <h3 className="text-lg font-bold text-white leading-tight">{f.complaint_title}</h3>
+                                    <span className="text-sm shrink-0">{renderStars(f.rating)}</span>
+                                </div>
+                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex-1">
+                                    <p className="text-slate-300 italic text-sm leading-relaxed">"{f.comments}"</p>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-white/[0.06] mt-auto">
+                                    <span className="text-sm font-semibold text-emerald-400">— {f.student_name}</span>
+                                    <span className="text-xs font-medium text-slate-500 bg-white/5 px-2 py-1 rounded-md">{new Date(f.feedback_date).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
-
-            {error && <p style={styles.error}>{error}</p>}
-
-            {feedback.length === 0 ? (
-                <div style={styles.emptyState}>
-                    <p>No feedback received yet.</p>
-                </div>
-            ) : (
-                <div style={styles.grid}>
-                    {feedback.map((f) => (
-                        <div key={f.feedback_id} style={styles.card}>
-                            <div style={styles.cardHeader}>
-                                <h3 style={styles.complaintTitle}>{f.complaint_title}</h3>
-                                <span style={styles.rating}>{renderStars(f.rating)}</span>
-                            </div>
-                            <p style={styles.comments}>"{f.comments}"</p>
-                            <div style={styles.cardFooter}>
-                                <span style={styles.studentName}>— {f.student_name}</span>
-                                <span style={styles.date}>{new Date(f.feedback_date).toLocaleDateString()}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }
-
-const styles = {
-    page: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f1f5f9', padding: '2rem' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' },
-    heading: { fontSize: '24px', fontWeight: '600', margin: 0 },
-    backBtn: { padding: '8px 16px', backgroundColor: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' },
-    card: { backgroundColor: '#1e293b', padding: '1.5rem', borderRadius: '12px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '1rem' },
-    cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' },
-    complaintTitle: { fontSize: '16px', fontWeight: '600', color: '#34d399', margin: 0 },
-    rating: { fontSize: '14px' },
-    comments: { fontSize: '14px', color: '#cbd5e1', fontStyle: 'italic', lineHeight: '1.5', margin: 0 },
-    cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #334155' },
-    studentName: { fontSize: '12px', color: '#94a3b8' },
-    date: { fontSize: '12px', color: '#64748b' },
-    error: { color: '#f87171', backgroundColor: '#450a0a', padding: '10px', borderRadius: '8px', marginBottom: '1rem', fontSize: '14px' },
-    emptyState: { textAlign: 'center', padding: '4rem', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px dashed #334155' }
-};

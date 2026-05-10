@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Landmark, ClipboardList, Star, Clock, CheckCircle, XCircle } from '../../components/Icons';
 
 export default function MyComplaints() {
     const navigate = useNavigate();
@@ -70,118 +71,142 @@ export default function MyComplaints() {
         }
     };
 
-    const getStatusColor = (status) => {
+    const getStatusStyle = (status) => {
         switch (status) {
-            case 'Pending':     return '#fbbf24';
-            case 'In-Progress': return '#3b82f6';
-            case 'Resolved':    return '#10b981';
-            case 'Rejected':    return '#f87171';
-            case 'Reopened':    return '#8b5cf6';
-            case 'Reopen-Requested': return '#6366f1';
-            default:            return '#94a3b8';
+            case 'Pending':     return 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
+            case 'In-Progress': return 'bg-violet-500/20 text-violet-300 border border-violet-500/30';
+            case 'Resolved':    return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            case 'Rejected':    return 'bg-red-500/20 text-red-300 border border-red-500/30';
+            case 'Reopened':    return 'bg-orange-500/20 text-orange-300 border border-orange-500/30';
+            case 'Reopen-Requested': return 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+            default:            return 'bg-white/[0.05] text-slate-300 border border-white/10';
         }
     };
 
     return (
-        <div style={styles.page}>
-            <div style={styles.navbar}>
-                <span style={styles.logo} onClick={() => navigate('/student/dashboard')}>SmartResolve</span>
-                <button style={styles.backBtn} onClick={() => navigate('/student/dashboard')}>Back to Dashboard</button>
-            </div>
+        <div className="min-h-screen bg-sr-dark">
+            {/* Navbar */}
+            <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-white" onClick={async () => {
+                            await axios.post('/api/logout', {}, { withCredentials: true });
+                            navigate('/');
+                        }}>
+                            <Landmark size={24} />
+                            <span className="text-lg font-bold tracking-tight">Smart<span className="text-violet-400">Resolve</span></span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button 
+                                className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl text-sm font-medium transition-colors"
+                                onClick={() => navigate('/student/dashboard')}
+                            >
+                                ← Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
 
-            <div style={styles.content}>
-                <div style={styles.header}>
-                    <h2 style={styles.heading}>My Complaints</h2>
-                    <p style={styles.sub}>Track the status of your submitted issues.</p>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-white mb-2">My Complaints</h2>
+                    <p className="text-slate-400">Track the status of your submitted issues.</p>
                 </div>
 
+                {error && <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm">{error}</div>}
+
                 {loading ? (
-                    <div style={styles.loading}>Loading complaints...</div>
-                ) : error ? (
-                    <div style={styles.error}>{error}</div>
+                    <div className="flex flex-col items-center justify-center p-16 gap-4">
+                        <div className="w-10 h-10 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+                        <p className="text-slate-400 font-medium">Loading complaints…</p>
+                    </div>
                 ) : complaints.length === 0 ? (
-                    <div style={styles.empty}>
-                        <p>You haven't submitted any complaints yet.</p>
-                        <button style={styles.submitBtn} onClick={() => navigate('/student/submit-complaint')}>
+                    <div className="flex flex-col items-center justify-center p-16 bg-white/[0.03] rounded-3xl border border-white/[0.06]">
+                        <ClipboardList size={64} className="text-slate-700 mb-6" />
+                        <p className="text-slate-400 font-medium text-lg mb-6">You haven't submitted any complaints yet.</p>
+                        <button 
+                            className="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:opacity-90 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 transition-all"
+                            onClick={() => navigate('/student/submit-complaint')}
+                        >
                             Submit Your First Complaint
                         </button>
                     </div>
                 ) : (
-                    <div style={styles.tableContainer}>
-                        <table style={styles.table}>
-                            <thead>
-                                <tr style={styles.tableHeader}>
-                                    <th style={styles.th}>ID</th>
-                                    <th style={styles.th}>Title</th>
-                                    <th style={styles.th}>Department</th>
-                                    <th style={styles.th}>Category</th>
-                                    <th style={styles.th}>Status</th>
-                                    <th style={styles.th}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {complaints.map(complaint => (
-                                    <tr key={complaint.complaint_id} style={styles.tableRow}>
-                                        <td style={styles.td}>#{complaint.complaint_id}</td>
-                                        <td style={{...styles.td, fontWeight: '500'}}>{complaint.title}</td>
-                                        <td style={styles.td}>{complaint.department_name}</td>
-                                        <td style={styles.td}>{complaint.category_name || 'N/A'}</td>
-                                        <td style={styles.td}>
-                                            <span style={{
-                                                ...styles.badge,
-                                                backgroundColor: `${getStatusColor(complaint.status)}20`,
-                                                color: getStatusColor(complaint.status),
-                                                border: `1px solid ${getStatusColor(complaint.status)}40`
-                                            }}>
-                                                {complaint.status}
-                                            </span>
-                                        </td>
-                                        <td style={{...styles.td, display: 'flex', gap: '8px'}}>
-                                            {(complaint.status === 'Resolved' || complaint.status === 'Rejected') && (
-                                                <button 
-                                                    style={styles.reopenBtn}
-                                                    onClick={() => setReopenId(complaint.complaint_id)}
-                                                >
-                                                    Reopen
-                                                </button>
-                                            )}
-                                            {complaint.status === 'Reopen-Requested' && (
-                                                <span style={{ color: '#6366f1', fontSize: '12px', fontStyle: 'italic' }}>Pending Approval</span>
-                                            )}
-                                            {complaint.status === 'Resolved' && (
-                                                <button 
-                                                    style={styles.feedbackBtn}
-                                                    onClick={() => setFeedbackId(complaint.complaint_id)}
-                                                >
-                                                    Feedback
-                                                </button>
-                                            )}
-                                        </td>
+                    <div className="bg-white/[0.03] border border-violet-500/20 rounded-2xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-white/[0.04] border-b border-white/[0.06]">
+                                        <th className="p-4 text-sm font-semibold text-slate-400">ID</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Title</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Department</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Category</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Status</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-white/[0.04]">
+                                    {complaints.map(complaint => (
+                                        <tr key={complaint.complaint_id} className="hover:bg-white/[0.04] transition-colors">
+                                            <td className="p-4 text-sm font-bold text-violet-400">#{complaint.complaint_id}</td>
+                                            <td className="p-4 text-sm font-bold text-white">{complaint.title}</td>
+                                            <td className="p-4 text-sm text-slate-400 font-medium">{complaint.department_name}</td>
+                                            <td className="p-4 text-sm text-slate-400">{complaint.category_name || 'N/A'}</td>
+                                            <td className="p-4">
+                                                <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusStyle(complaint.status)}`}>
+                                                    {complaint.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex gap-2 items-center">
+                                                    {(complaint.status === 'Resolved' || complaint.status === 'Rejected') && (
+                                                        <button 
+                                                            className="px-3 py-1.5 border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 rounded-lg text-xs font-semibold transition-colors"
+                                                            onClick={() => setReopenId(complaint.complaint_id)}
+                                                        >
+                                                            Reopen
+                                                        </button>
+                                                    )}
+                                                    {complaint.status === 'Reopen-Requested' && (
+                                                        <span className="text-xs font-semibold italic text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md">Pending Approval</span>
+                                                    )}
+                                                    {complaint.status === 'Resolved' && (
+                                                        <button 
+                                                            className="px-3 py-1.5 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                                                            onClick={() => setFeedbackId(complaint.complaint_id)}
+                                                        >
+                                                            <Star size={14} className="text-amber-400" fill="currentColor" /> Feedback
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
-            </div>
+            </main>
 
             {/* Reopen Modal */}
             {reopenId && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modal}>
-                        <h3>Reopen Complaint #{reopenId}</h3>
-                        <p style={styles.modalSub}>Please provide a reason for reopening this complaint.</p>
-                        <form onSubmit={handleReopen}>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-sr-surface border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold text-white mb-1">Reopen Complaint #{reopenId}</h3>
+                        <p className="text-sm text-slate-400 mb-6">Please provide a reason for reopening this complaint.</p>
+                        <form onSubmit={handleReopen} className="flex flex-col gap-4">
                             <textarea 
-                                style={styles.modalTextarea}
+                                className="w-full bg-white/[0.05] border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl p-4 outline-none transition-all text-white resize-none min-h-[120px]"
                                 value={reopenRemarks}
                                 onChange={(e) => setReopenRemarks(e.target.value)}
                                 placeholder="Reason for reopening..."
                                 required
                             />
-                            <div style={styles.modalActions}>
-                                <button type="button" style={styles.cancelBtn} onClick={() => setReopenId(null)}>Cancel</button>
-                                <button type="submit" style={styles.confirmBtn} disabled={reopenLoading}>
+                            <div className="flex justify-end gap-3 mt-2">
+                                <button type="button" className="px-5 py-2.5 bg-white/[0.05] hover:bg-white/10 text-slate-300 rounded-xl font-medium transition-colors" onClick={() => setReopenId(null)}>Cancel</button>
+                                <button type="submit" className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold shadow-md transition-colors disabled:opacity-70" disabled={reopenLoading}>
                                     {reopenLoading ? 'Reopening...' : 'Confirm Reopen'}
                                 </button>
                             </div>
@@ -192,35 +217,32 @@ export default function MyComplaints() {
 
             {/* Feedback Modal */}
             {feedbackId && (
-                <div style={styles.modalOverlay}>
-                    <div style={styles.modal}>
-                        <h3>Share Your Feedback</h3>
-                        <p style={styles.modalSub}>How would you rate the resolution of complaint #{feedbackId}?</p>
-                        <form onSubmit={handleFeedback}>
-                            <div style={styles.ratingGroup}>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-sr-surface border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold text-white mb-1">Share Your Feedback</h3>
+                        <p className="text-sm text-slate-400 mb-6">How would you rate the resolution of complaint #{feedbackId}?</p>
+                        <form onSubmit={handleFeedback} className="flex flex-col gap-4">
+                            <div className="flex justify-center gap-2 mb-2">
                                 {[1, 2, 3, 4, 5].map(num => (
                                     <button 
                                         key={num}
                                         type="button"
-                                        style={{
-                                            ...styles.star,
-                                            color: num <= rating ? '#fbbf24' : '#4b5563'
-                                        }}
+                                        className={`transition-transform hover:scale-110 focus:outline-none drop-shadow-sm`}
                                         onClick={() => setRating(num)}
                                     >
-                                        ★
+                                        <Star size={32} fill={num <= rating ? 'currentColor' : 'none'} className={num <= rating ? 'text-amber-400' : 'text-slate-600'} />
                                     </button>
                                 ))}
                             </div>
                             <textarea 
-                                style={styles.modalTextarea}
+                                className="w-full bg-white/[0.05] border border-white/10 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 rounded-xl p-4 outline-none transition-all text-white resize-none min-h-[100px]"
                                 value={comments}
                                 onChange={(e) => setComments(e.target.value)}
                                 placeholder="Your comments (optional)..."
                             />
-                            <div style={styles.modalActions}>
-                                <button type="button" style={styles.cancelBtn} onClick={() => setFeedbackId(null)}>Cancel</button>
-                                <button type="submit" style={styles.feedbackSubmitBtn} disabled={feedbackLoading}>
+                            <div className="flex justify-end gap-3 mt-2">
+                                <button type="button" className="px-5 py-2.5 bg-white/[0.05] hover:bg-white/10 text-slate-300 rounded-xl font-medium transition-colors" onClick={() => setFeedbackId(null)}>Cancel</button>
+                                <button type="submit" className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold shadow-md transition-colors disabled:opacity-70" disabled={feedbackLoading}>
                                     {feedbackLoading ? 'Submitting...' : 'Submit Feedback'}
                                 </button>
                             </div>
@@ -231,37 +253,3 @@ export default function MyComplaints() {
         </div>
     );
 }
-
-const styles = {
-    page: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f1f5f9', fontFamily: "'Inter', sans-serif" },
-    navbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', backgroundColor: '#1e293b', borderBottom: '1px solid #334155' },
-    logo: { fontSize: '18px', fontWeight: '700', color: '#818cf8', cursor: 'pointer' },
-    backBtn: { padding: '8px 16px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' },
-    content: { padding: '2rem', maxWidth: '1200px', margin: '0 auto' },
-    header: { marginBottom: '2rem' },
-    heading: { fontSize: '24px', fontWeight: '600', margin: '0 0 6px' },
-    sub: { color: '#94a3b8', fontSize: '14px', margin: 0 },
-    loading: { textAlign: 'center', padding: '3rem', color: '#94a3b8' },
-    error: { padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' },
-    empty: { textAlign: 'center', padding: '4rem 2rem', backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155' },
-    submitBtn: { marginTop: '1.5rem', padding: '12px 24px', backgroundColor: '#6366f1', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
-    tableContainer: { backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155', overflow: 'hidden' },
-    table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
-    tableHeader: { backgroundColor: '#0f172a' },
-    th: { padding: '1rem', fontSize: '13px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' },
-    tableRow: { borderBottom: '1px solid #334155', transition: 'background-color 0.2s' },
-    td: { padding: '1rem', fontSize: '14px', color: '#f1f5f9' },
-    badge: { padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600' },
-    reopenBtn: { padding: '6px 12px', backgroundColor: 'transparent', color: '#8b5cf6', border: '1px solid #8b5cf6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' },
-    feedbackBtn: { padding: '6px 12px', backgroundColor: 'transparent', color: '#f59e0b', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' },
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modal: { backgroundColor: '#1e293b', padding: '2rem', borderRadius: '16px', width: '100%', maxWidth: '500px', border: '1px solid #334155' },
-    modalSub: { color: '#94a3b8', fontSize: '14px', marginBottom: '1.5rem' },
-    modalTextarea: { width: '100%', padding: '12px', backgroundColor: '#0f172a', color: 'white', border: '1px solid #334155', borderRadius: '10px', minHeight: '100px', marginBottom: '1.5rem', outline: 'none' },
-    modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '1rem' },
-    cancelBtn: { padding: '10px 20px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer' },
-    confirmBtn: { padding: '10px 20px', backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
-    ratingGroup: { display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.5rem' },
-    star: { fontSize: '32px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', outline: 'none' },
-    feedbackSubmitBtn: { padding: '10px 20px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }
-};

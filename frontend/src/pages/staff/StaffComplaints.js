@@ -1,18 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Landmark, ClipboardList, Clock, Users, Building, Mail, CheckCircle, XCircle } from '../../components/Icons';
 
 const PRIORITY_COLORS = {
-  High: { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' },
-  Medium: { bg: '#fef3c7', text: '#d97706', border: '#fcd34d' },
-  Low: { bg: '#d1fae5', text: '#059669', border: '#6ee7b7' },
+  High: 'bg-red-500/20 text-red-400 border border-red-500/30',
+  Medium: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+  Low: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
 };
+
 const STATUS_COLORS = {
-  Pending: { bg: '#1e3a5f', text: '#60a5fa' },
-  'In-Progress': { bg: '#1e293b', text: '#a78bfa' },
-  Resolved: { bg: '#064e3b', text: '#34d399' },
-  Rejected: { bg: '#3b0f0f', text: '#f87171' },
-  Reopened: { bg: '#1e293b', text: '#fb923c' },
+  Pending: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+  'In-Progress': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  Resolved: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  Rejected: 'bg-red-500/20 text-red-300 border-red-500/30',
+  Reopened: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
 };
 
 export default function StaffComplaints() {
@@ -82,64 +84,83 @@ export default function StaffComplaints() {
   };
 
   return (
-    <div style={S.page}>
-      {/* ── Navbar ── */}
-      <nav style={S.navbar}>
-        <span style={S.logo}>SmartResolve</span>
-        <div style={S.navMid}>
-          <button style={S.navLink} onClick={() => navigate('/staff/dashboard')}>Dashboard</button>
-          <button style={{ ...S.navLink, ...S.navActive }}>Assigned Complaints</button>
-        </div>
-        <div style={S.navRight}>
-          <span style={S.roleTag}>Staff</span>
-          <button style={S.logoutBtn} onClick={handleLogout}>Logout</button>
-        </div>
+    <div className="min-h-screen bg-sr-dark">
+      {/* Navbar */}
+      <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center h-16">
+                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={async () => {
+                      await axios.post('/api/logout', {}, { withCredentials: true });
+                      navigate('/');
+                  }}>
+                      <span className="text-xl">🏛️</span>
+                      <span className="text-lg font-bold text-white tracking-tight">Smart<span className="text-emerald-400">Resolve</span></span>
+                  </div>
+                  <div className="hidden md:flex gap-2">
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/staff/dashboard')}>Dashboard</button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">Assigned Complaints</button>
+                  </div>
+                  <div className="flex items-center gap-4">
+                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-300 text-sm font-medium rounded-full border border-emerald-500/20">Staff</span>
+                      <button onClick={handleLogout} className="text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors">Logout</button>
+                  </div>
+              </div>
+          </div>
       </nav>
 
-      {/* ── Main ── */}
-      <div style={S.main}>
-        <div style={S.headerRow}>
+      {/* Main Content */}
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 style={S.pageTitle}>Assigned Complaints</h1>
-            <p style={S.pageSub}>View the complaints currently assigned to you for resolution.</p>
+            <h1 className="text-3xl font-bold text-white mb-1">Assigned Complaints</h1>
+            <p className="text-slate-400 text-sm">View the complaints currently assigned to you for resolution.</p>
           </div>
-          <div style={S.stats}>
-            <span style={S.statBadge}>{complaints.length} assigned</span>
+          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full">
+            <span className="text-emerald-300 text-sm font-semibold">{complaints.length} assigned</span>
           </div>
         </div>
 
-        {/* ── Filters ── */}
-        <div style={S.filterRow}>
-          <label style={S.filterLabel}>Status Filter:</label>
-          <select style={S.select} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="In-Progress">In-Progress</option>
-            <option value="Resolved">Resolved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Reopened">Reopened</option>
-          </select>
-          <button style={S.clearBtn} onClick={() => setFilterStatus('')}>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-6 bg-white/[0.03] p-4 rounded-2xl border border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-400">Status Filter:</label>
+            <select
+              className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none text-white min-w-[150px]"
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+            >
+              <option value="" className="bg-gray-900">All Statuses</option>
+              <option value="Pending" className="bg-gray-900">Pending</option>
+              <option value="In-Progress" className="bg-gray-900">In-Progress</option>
+              <option value="Resolved" className="bg-gray-900">Resolved</option>
+              <option value="Rejected" className="bg-gray-900">Rejected</option>
+              <option value="Reopened" className="bg-gray-900">Reopened</option>
+            </select>
+          </div>
+          <button
+            className="text-sm text-slate-400 hover:text-red-400 font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+            onClick={() => setFilterStatus('')}
+          >
             Clear Filters
           </button>
         </div>
 
-        {/* ── Error ── */}
-        {error && <div style={S.errorBanner}>{error}</div>}
+        {/* Error */}
+        {error && <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm">{error}</div>}
 
-        {/* ── Loading ── */}
+        {/* List / Loading */}
         {loading ? (
-          <div style={S.loadingWrap}>
-            <div style={S.spinner} />
-            <p style={S.loadingText}>Loading assigned complaints…</p>
+          <div className="flex flex-col items-center justify-center p-16 gap-4">
+            <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+            <p className="text-slate-400 font-medium">Loading assigned complaints…</p>
           </div>
         ) : complaints.length === 0 ? (
-          <div style={S.emptyState}>
-            <span style={S.emptyIcon}>📭</span>
-            <p style={S.emptyText}>You have no assigned complaints for this filter.</p>
+          <div className="flex flex-col items-center justify-center p-16 bg-white/[0.03] rounded-3xl border border-white/[0.06]">
+            <ClipboardList size={64} className="text-slate-700 mb-6" />
+            <p className="text-slate-500 font-medium">You have no assigned complaints for this filter.</p>
           </div>
         ) : (
-          <div style={S.cardGrid}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {complaints.map(c => (
               <ComplaintCard 
                 key={c.complaint_id} 
@@ -152,53 +173,59 @@ export default function StaffComplaints() {
             ))}
           </div>
         )}
-      </div>
+      </main>
 
-      {/* ── History Modal ── */}
+      {/* History Modal */}
       {historyModal && (
-        <div style={S.modalOverlay} onClick={() => setHistoryModal(null)}>
-          <div style={S.modal} onClick={e => e.stopPropagation()}>
-            <div style={S.modalHeader}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-sr-surface border border-white/10 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start p-6 border-b border-white/[0.06] rounded-t-3xl">
               <div>
-                <h2 style={S.modalTitle}>Complaint History</h2>
-                <p style={S.modalSub}>{historyModal.title}</p>
+                <h2 className="text-xl font-bold text-white">Complaint History</h2>
+                <p className="text-sm text-slate-400 mt-1">{historyModal.title}</p>
               </div>
-              <button style={S.modalClose} onClick={() => setHistoryModal(null)}>✕</button>
+              <button
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-slate-300 hover:bg-white/20 transition-colors"
+                onClick={() => setHistoryModal(null)}
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={S.modalBody}>
+            <div className="p-6 overflow-y-auto flex-1">
               {historyLoading ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                  <div style={S.spinner} />
-                  <p style={S.loadingText}>Loading history…</p>
+                <div className="flex flex-col items-center py-10 gap-3">
+                  <div className="w-8 h-8 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                  <p className="text-slate-400 text-sm">Loading history…</p>
                 </div>
               ) : historyModal.error ? (
-                <p style={{ color: '#f87171' }}>{historyModal.error}</p>
+                <p className="text-red-400 text-center py-6">{historyModal.error}</p>
               ) : historyModal.history.length === 0 ? (
-                <p style={S.emptyText}>No history entries yet.</p>
+                <p className="text-slate-500 text-center py-6">No history entries yet.</p>
               ) : (
-                <div style={S.timeline}>
+                <div className="space-y-0">
                   {historyModal.history.map((h, i) => (
-                    <div key={h.history_id ?? i} style={S.timelineItem}>
-                      <div style={S.timelineDot} />
-                      <div style={S.timelineContent}>
-                        <div style={S.timelineTop}>
-                          <span style={S.actionBadge}>{h.action_type}</span>
-                          <span style={S.timelineTime}>
-                            {h.change_time ? new Date(h.change_time).toLocaleString() : '—'}
-                          </span>
+                    <div key={h.history_id ?? i} className="flex gap-4 relative pb-8 last:pb-0">
+                      {i !== historyModal.history.length - 1 && (
+                        <div className="absolute top-6 left-[11px] bottom-0 w-0.5 bg-emerald-500/20" />
+                      )}
+                      <div className="w-6 h-6 rounded-full bg-emerald-500/20 border-2 border-emerald-500/50 flex-shrink-0 z-10 flex items-center justify-center mt-1">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      </div>
+                      <div className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.06]">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">{h.action_type}</span>
+                          <span className="text-xs text-slate-500 font-medium">{h.change_time ? new Date(h.change_time).toLocaleString() : '—'}</span>
                         </div>
                         {(h.old_status || h.new_status) && (
-                          <p style={S.statusChange}>
-                            {h.old_status && <span style={S.oldStatus}>{h.old_status}</span>}
-                            {h.old_status && h.new_status && <span style={{ color: '#94a3b8' }}> → </span>}
-                            {h.new_status && <span style={S.newStatus}>{h.new_status}</span>}
-                          </p>
+                          <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                            {h.old_status && <span className="text-slate-500 line-through">{h.old_status}</span>}
+                            {h.old_status && h.new_status && <span className="text-slate-600">→</span>}
+                            {h.new_status && <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{h.new_status}</span>}
+                          </div>
                         )}
-                        {h.remarks && <p style={S.remarks}>{h.remarks}</p>}
-                        <p style={S.changedBy}>
-                          By: {h.changed_by_name || 'Unknown'} ({h.changed_by_role || '—'})
-                        </p>
+                        {h.remarks && <p className="text-sm text-slate-400 mb-3 bg-white/[0.03] p-3 rounded-xl border border-white/[0.06]">{h.remarks}</p>}
+                        <p className="text-xs text-slate-500 font-medium">By: <span className="text-slate-300">{h.changed_by_name || 'Unknown'}</span> <span className="text-slate-600">({h.changed_by_role || '—'})</span></p>
                       </div>
                     </div>
                   ))}
@@ -212,153 +239,80 @@ export default function StaffComplaints() {
   );
 }
 
-// ── Complaint Card ──────────────────────────────────────────────────────────────
+// ── Complaint Card Component ──────────────────────────────────────────────────
 function ComplaintCard({ c, updatingId, updateMsg, onStatusChange, onHistory }) {
-  const priColor = PRIORITY_COLORS[c.priority] || PRIORITY_COLORS.Medium;
-  const stColor  = STATUS_COLORS[c.status]     || STATUS_COLORS.Pending;
-  const msg      = updateMsg[c.complaint_id];
+  const priClass = PRIORITY_COLORS[c.priority] || PRIORITY_COLORS.Medium;
+  const stClass = STATUS_COLORS[c.status] || STATUS_COLORS.Pending;
+  const msg = updateMsg[c.complaint_id];
 
   return (
-    <div style={S.card}>
+    <div className="bg-white/[0.03] border border-emerald-500/20 rounded-3xl p-6 transition-all hover:bg-white/[0.06] hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 flex flex-col h-full">
       {/* Top row */}
-      <div style={S.cardTop}>
-        <span style={S.cid}>#{c.complaint_id} {c.is_new === 1 && <span style={S.newBadge}>NEW</span>}</span>
-        <div style={S.statusControl}>
-            {msg === 'ok' && <span style={{fontSize: '12px', color: '#34d399'}}>✓</span>}
-            {msg === 'err' && <span style={{fontSize: '12px', color: '#f87171'}}>✗</span>}
-            <select
-              style={{ ...S.statusSelect, background: stColor.bg, color: stColor.text }}
-              value={c.status}
-              disabled={updatingId === c.complaint_id}
-              onChange={e => onStatusChange(c.complaint_id, e.target.value)}
-            >
-              <option value="Pending">Pending</option>
-              <option value="In-Progress">In-Progress</option>
-              <option value="Resolved">Resolved</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Reopened">Reopened</option>
-            </select>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">#{c.complaint_id}</span>
+            {c.is_new === 1 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">NEW</span>}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {msg === 'ok' && <span className="text-xs font-bold text-emerald-400 animate-pulse">✓</span>}
+          {msg === 'err' && <span className="text-xs font-bold text-red-400 animate-pulse">✗</span>}
+          <select
+            className={`text-xs font-bold border outline-none rounded-full px-3 py-1 cursor-pointer appearance-none text-center ${stClass}`}
+            value={c.status}
+            disabled={updatingId === c.complaint_id}
+            onChange={e => onStatusChange(c.complaint_id, e.target.value)}
+          >
+            <option value="Pending" className="bg-gray-900">Pending</option>
+            <option value="In-Progress" className="bg-gray-900">In-Progress</option>
+            <option value="Resolved" className="bg-gray-900">Resolved</option>
+            <option value="Rejected" className="bg-gray-900">Rejected</option>
+            <option value="Reopened" className="bg-gray-900">Reopened</option>
+          </select>
         </div>
       </div>
 
-      {/* Title & category */}
-      <h3 style={S.cardTitle}>{c.title || 'Untitled'}</h3>
-      <p style={S.cardMeta}>
-        <span style={S.metaTag}>📂 {c.category_name || 'Uncategorised'}</span>
-        <span style={S.metaTag}>🏢 {c.department_name || '—'}</span>
-      </p>
+      <h3 className="text-lg font-bold text-white mb-2 leading-tight">{c.title || 'Untitled'}</h3>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <span className="text-xs font-semibold text-slate-400 bg-white/[0.05] px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5">
+          <ClipboardList size={14} /> {c.category_name || 'Uncategorised'}
+        </span>
+        <span className="text-xs font-semibold text-slate-400 bg-white/[0.05] px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5">
+          <Building size={14} /> {c.department_name || '—'}
+        </span>
+      </div>
 
-      {/* Description snippet */}
       {c.description && (
-        <p style={S.description}>
+        <p className="text-sm text-slate-400 mb-5 bg-white/[0.03] p-3 rounded-xl border border-white/[0.06] leading-relaxed flex-1">
           {c.description}
         </p>
       )}
 
-      {/* Student & date */}
-      <p style={S.smallMeta}>
-        <span>👤 {c.student_name || 'Student'}</span>
-        <span>📅 Assigned: {c.assignment_date ? new Date(c.assignment_date).toLocaleDateString() : '—'}</span>
-      </p>
-      <p style={S.smallMeta}>
-        <span>📧 {c.student_email}</span>
-        {c.deadline && <span style={{color: '#f87171'}}>⏱️ Deadline: {new Date(c.deadline).toLocaleDateString()}</span>}
-      </p>
+      <div className="mt-auto">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-4">
+            <div className="flex justify-between items-center text-xs font-medium text-slate-400 mb-2">
+                <span className="flex items-center gap-1.5"><Users size={14} /> {c.student_name || 'Student'}</span>
+                <span className="flex items-center gap-1.5"><Clock size={14} /> Assigned: {c.assignment_date ? new Date(c.assignment_date).toLocaleDateString() : '—'}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs font-medium text-slate-400">
+                <span className="flex items-center gap-1.5 truncate"><Mail size={14} /> {c.student_email}</span>
+                {c.deadline && <span className="flex items-center gap-1.5 text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded-md"><Clock size={14} /> {new Date(c.deadline).toLocaleDateString()}</span>}
+            </div>
+        </div>
 
-      {/* ── Priority ── */}
-      <div style={S.priorityRow}>
-        <span style={{ ...S.priorityBadge, background: priColor.bg, color: priColor.text, border: `1px solid ${priColor.border}` }}>
-          Priority: {c.priority}
-        </span>
+        <div className="flex items-center justify-between pt-2">
+            <span className={`text-xs font-bold rounded-lg px-2.5 py-1.5 ${priClass}`}>
+                Priority: {c.priority}
+            </span>
+            <button
+                className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                onClick={() => onHistory(c)}
+            >
+                <Clock size={14} /> History
+            </button>
+        </div>
       </div>
-
-      {/* History button */}
-      <button style={S.historyBtn} onClick={() => onHistory(c)}>
-        🕐 View History
-      </button>
     </div>
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────────
-const S = {
-  page: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f1f5f9', fontFamily: "'Inter', sans-serif" },
-
-  // Navbar
-  navbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.9rem 2rem', backgroundColor: '#1e293b', borderBottom: '1px solid #334155', position: 'sticky', top: 0, zIndex: 100 },
-  logo: { fontSize: '18px', fontWeight: '800', color: '#34d399', letterSpacing: '0.5px' },
-  navMid: { display: 'flex', gap: '0.5rem' },
-  navLink: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '14px', cursor: 'pointer', padding: '6px 14px', borderRadius: '8px', transition: 'all 0.2s' },
-  navActive: { color: '#34d399', background: 'rgba(52,211,153,0.1)' },
-  navRight: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  roleTag: { fontSize: '12px', color: '#94a3b8', background: '#0f172a', padding: '4px 10px', borderRadius: '20px', border: '1px solid #334155' },
-  logoutBtn: { padding: '6px 14px', background: 'transparent', color: '#f87171', border: '1px solid #f87171', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' },
-
-  // Main layout
-  main: { padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' },
-  pageTitle: { fontSize: '26px', fontWeight: '700', margin: 0, color: '#f1f5f9' },
-  pageSub: { fontSize: '14px', color: '#64748b', margin: '4px 0 0' },
-  stats: { display: 'flex', gap: '0.5rem', alignItems: 'center' },
-  statBadge: { background: '#1e293b', color: '#34d399', fontSize: '13px', padding: '4px 12px', borderRadius: '20px', border: '1px solid #334155' },
-
-  // Filters
-  filterRow: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: '#1e293b', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid #334155' },
-  filterLabel: { fontSize: '13px', color: '#94a3b8', fontWeight: '500' },
-  select: { background: '#0f172a', color: '#f1f5f9', border: '1px solid #334155', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', outline: 'none' },
-  clearBtn: { background: 'transparent', color: '#f87171', border: '1px solid #f87171', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', cursor: 'pointer' },
-
-  // Cards
-  cardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' },
-  card: { background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '1.5rem', transition: 'transform 0.2s, box-shadow 0.2s' },
-  cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' },
-  cid: { fontSize: '12px', color: '#475569', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' },
-  newBadge: { background: '#ef4444', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' },
-  statusBadge: { border: 'none', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '600' },
-  statusControl: { display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  statusSelect: { border: 'none', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none', appearance: 'none', textAlign: 'center' },
-  cardTitle: { fontSize: '15px', fontWeight: '700', color: '#f1f5f9', margin: '0 0 0.5rem' },
-  cardMeta: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', margin: '0 0 0.6rem' },
-  metaTag: { fontSize: '12px', color: '#94a3b8', background: '#0f172a', padding: '3px 8px', borderRadius: '6px', border: '1px solid #334155' },
-  description: { fontSize: '13px', color: '#cbd5e1', lineHeight: '1.5', margin: '0 0 1rem', padding: '10px', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '8px', borderLeft: '3px solid #334155' },
-  smallMeta: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', margin: '0 0 0.5rem' },
-
-  // Priority
-  priorityRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0 0.5rem', gap: '0.5rem', flexWrap: 'wrap' },
-  priorityBadge: { fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' },
-
-  // History button
-  historyBtn: { width: '100%', marginTop: '0.5rem', padding: '8px', background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' },
-
-  // Misc
-  errorBanner: { background: '#3b0f0f', color: '#f87171', padding: '1rem 1.25rem', borderRadius: '10px', fontSize: '14px', marginBottom: '1rem' },
-  loadingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4rem', gap: '1rem' },
-  spinner: { width: '36px', height: '36px', border: '3px solid #334155', borderTop: '3px solid #34d399', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-  loadingText: { color: '#94a3b8', fontSize: '14px' },
-  emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4rem', gap: '0.75rem' },
-  emptyIcon: { fontSize: '48px' },
-  emptyText: { color: '#94a3b8', fontSize: '15px' },
-
-  // Modal
-  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
-  modal: { background: '#0f172a', border: '1px solid #334155', borderRadius: '20px', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.5rem', borderBottom: '1px solid #334155' },
-  modalTitle: { fontSize: '18px', fontWeight: '700', margin: 0, color: '#f1f5f9' },
-  modalSub: { fontSize: '13px', color: '#94a3b8', margin: '4px 0 0' },
-  modalClose: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '18px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px' },
-  modalBody: { padding: '1.5rem', overflowY: 'auto', flex: 1 },
-
-  // Timeline
-  timeline: { display: 'flex', flexDirection: 'column', gap: '0' },
-  timelineItem: { display: 'flex', gap: '1rem', paddingBottom: '1.5rem', position: 'relative' },
-  timelineDot: { width: '10px', height: '10px', borderRadius: '50%', background: '#34d399', marginTop: '5px', flexShrink: 0, boxShadow: '0 0 8px rgba(52,211,153,0.5)' },
-  timelineContent: { flex: 1, background: '#1e293b', borderRadius: '10px', padding: '0.75rem 1rem', border: '1px solid #334155' },
-  timelineTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' },
-  actionBadge: { fontSize: '11px', fontWeight: '700', color: '#34d399', background: 'rgba(52,211,153,0.1)', padding: '2px 8px', borderRadius: '6px' },
-  timelineTime: { fontSize: '11px', color: '#64748b' },
-  statusChange: { fontSize: '13px', margin: '0.25rem 0' },
-  oldStatus: { color: '#f87171', fontWeight: '600' },
-  newStatus: { color: '#34d399', fontWeight: '600' },
-  remarks: { fontSize: '13px', color: '#cbd5e1', margin: '0.25rem 0 0' },
-  changedBy: { fontSize: '12px', color: '#64748b', marginTop: '0.4rem' },
-};

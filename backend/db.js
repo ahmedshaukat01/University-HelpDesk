@@ -51,7 +51,7 @@ const executeQuery = (query, parameters = []) => {
 
             parameters.forEach(param => {
                 try {
-                    request.addParameter(param.name, param.type, param.value);
+                    request.addParameter(param.name, param.type, param.value, param.options || {});
                 } catch (error) {
                     console.error('Parameter Error:', error);
                     return reject(error);
@@ -106,7 +106,7 @@ const loginUser = async (email) => {
             @Name          AS Name,
             @DepartmentId  AS DepartmentId;
     `;
-    const parameters = [{ name: 'Email', type: TYPES.VarChar, value: email }];
+    const parameters = [{ name: 'Email', type: TYPES.VarChar, value: email, options: { length: 100 } }];
     return await executeQuery(query, parameters);
 };
 
@@ -142,7 +142,7 @@ const adminLogin = async (email) => {
             @PasswordHash  AS PasswordHash,
             @Name          AS Name;
     `;
-    const parameters = [{ name: 'Email', type: TYPES.VarChar, value: email }];
+    const parameters = [{ name: 'Email', type: TYPES.VarChar, value: email, options: { length: 100 } }];
     return await executeQuery(query, parameters);
 };
 
@@ -154,9 +154,9 @@ const getComplaintsForAdmin = async ({ filter = 'all', departmentId = null, prio
             @Priority     = @Priority;
     `;
     const parameters = [
-        { name: 'Filter', type: TYPES.VarChar, value: filter },
+        { name: 'Filter', type: TYPES.VarChar, value: filter, options: { length: 20 } },
         { name: 'DepartmentId', type: TYPES.Int, value: departmentId ? parseInt(departmentId) : null },
-        { name: 'Priority', type: TYPES.VarChar, value: priority || null },
+        { name: 'Priority', type: TYPES.VarChar, value: priority || null, options: { length: 10 } },
     ];
     return await executeQuery(query, parameters);
 };
@@ -174,7 +174,7 @@ const updateComplaintPriority = async (complaintId, newPriority, adminId) => {
     `;
     const parameters = [
         { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
-        { name: 'NewPriority', type: TYPES.VarChar, value: newPriority },
+        { name: 'NewPriority', type: TYPES.VarChar, value: newPriority, options: { length: 10 } },
         { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) },
     ];
     return await executeQuery(query, parameters);
@@ -193,7 +193,7 @@ const updateComplaintStatus = async (complaintId, newStatus, adminId) => {
     `;
     const parameters = [
         { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
-        { name: 'NewStatus', type: TYPES.VarChar, value: newStatus },
+        { name: 'NewStatus', type: TYPES.VarChar, value: newStatus, options: { length: 20 } },
         { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) },
     ];
     return await executeQuery(query, parameters);
@@ -222,7 +222,7 @@ const updateDepartmentName = async (departmentId, newName) => {
     `;
     const parameters = [
         { name: 'DepartmentId', type: TYPES.Int, value: parseInt(departmentId) },
-        { name: 'NewName', type: TYPES.VarChar, value: newName },
+        { name: 'NewName', type: TYPES.VarChar, value: newName, options: { length: 100 } },
     ];
     return await executeQuery(query, parameters);
 };
@@ -247,11 +247,11 @@ const addUserAdmin = async (data) => {
         SELECT @ResultCode AS ResultCode, @ResultMessage AS ResultMessage;
     `;
     const parameters = [
-        { name: 'Role', type: TYPES.VarChar, value: data.role },
-        { name: 'Name', type: TYPES.VarChar, value: data.name },
-        { name: 'Email', type: TYPES.VarChar, value: data.email },
-        { name: 'Password', type: TYPES.VarChar, value: data.password },
-        { name: 'Phone', type: TYPES.VarChar, value: data.phone || null },
+        { name: 'Role', type: TYPES.VarChar, value: data.role, options: { length: 20 } },
+        { name: 'Name', type: TYPES.VarChar, value: data.name, options: { length: 100 } },
+        { name: 'Email', type: TYPES.VarChar, value: data.email, options: { length: 100 } },
+        { name: 'Password', type: TYPES.VarChar, value: data.password, options: { length: 255 } },
+        { name: 'Phone', type: TYPES.VarChar, value: data.phone || null, options: { length: 20 } },
         { name: 'DepartmentId', type: TYPES.Int, value: data.departmentId ? parseInt(data.departmentId) : null },
     ];
     return await executeQuery(query, parameters);
@@ -269,7 +269,7 @@ const deactivateUserAdmin = async (id, role) => {
     `;
     const parameters = [
         { name: 'Id', type: TYPES.Int, value: parseInt(id) },
-        { name: 'Role', type: TYPES.VarChar, value: role },
+        { name: 'Role', type: TYPES.VarChar, value: role, options: { length: 20 } },
     ];
     return await executeQuery(query, parameters);
 };
@@ -286,7 +286,7 @@ const activateUserAdmin = async (id, role) => {
     `;
     const parameters = [
         { name: 'Id', type: TYPES.Int, value: parseInt(id) },
-        { name: 'Role', type: TYPES.VarChar, value: role },
+        { name: 'Role', type: TYPES.VarChar, value: role, options: { length: 20 } },
     ];
     return await executeQuery(query, parameters);
 };
@@ -311,9 +311,9 @@ const updateAdminProfile = async (adminId, name, phone, password) => {
     `;
     const parameters = [
         { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) },
-        { name: 'Name', type: TYPES.VarChar, value: name },
-        { name: 'Phone', type: TYPES.VarChar, value: phone },
-        { name: 'Password', type: TYPES.VarChar, value: password || null }
+        { name: 'Name', type: TYPES.VarChar, value: name, options: { length: 100 } },
+        { name: 'Phone', type: TYPES.VarChar, value: phone, options: { length: 20 } },
+        { name: 'Password', type: TYPES.VarChar, value: password || null, options: { length: 255 } }
     ];
     return await executeQuery(query, parameters);
 };
@@ -359,7 +359,7 @@ const handleReopenRequest = async (complaintId, adminId, action) => {
     const parameters = [
         { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
         { name: 'AdminId', type: TYPES.Int, value: parseInt(adminId) },
-        { name: 'Action', type: TYPES.VarChar, value: action }
+        { name: 'Action', type: TYPES.VarChar, value: action, options: { length: 10 } }
     ];
     return await executeQuery(query, parameters);
 };
@@ -410,7 +410,7 @@ const getAssignedComplaintsForStaff = async (staffId, status = null) => {
     `;
     const parameters = [
         { name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) },
-        { name: 'Status', type: TYPES.VarChar, value: status || null }
+        { name: 'Status', type: TYPES.VarChar, value: status || null, options: { length: 20 } }
     ];
     return await executeQuery(query, parameters);
 };
@@ -428,7 +428,7 @@ const updateStaffComplaintStatus = async (complaintId, newStatus, staffId) => {
     `;
     const parameters = [
         { name: 'ComplaintId', type: TYPES.Int, value: parseInt(complaintId) },
-        { name: 'NewStatus', type: TYPES.VarChar, value: newStatus },
+        { name: 'NewStatus', type: TYPES.VarChar, value: newStatus, options: { length: 20 } },
         { name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) },
     ];
     return await executeQuery(query, parameters);
@@ -454,9 +454,9 @@ const updateStaffProfile = async (staffId, name, phone, password) => {
     `;
     const parameters = [
         { name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) },
-        { name: 'Name', type: TYPES.VarChar, value: name },
-        { name: 'Phone', type: TYPES.VarChar, value: phone },
-        { name: 'Password', type: TYPES.VarChar, value: password || null },
+        { name: 'Name', type: TYPES.VarChar, value: name, options: { length: 100 } },
+        { name: 'Phone', type: TYPES.VarChar, value: phone, options: { length: 20 } },
+        { name: 'Password', type: TYPES.VarChar, value: password || null, options: { length: 255 } },
     ];
     return await executeQuery(query, parameters);
 };
@@ -474,7 +474,7 @@ const getStaffNotifications = async (staffId) => {
 };
 
 const getStaffAnalytics = async (staffId) => {
-    const query = 'EXEC GetStaffAnalytics @StaffId';
+    const query = 'EXEC GetStaffAnalytics @StaffId = @StaffId';
     const parameters = [{ name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) }];
     return await executeQuery(query, parameters);
 };
@@ -503,10 +503,10 @@ const registerStudent = async (data) => {
             @ResultMessage AS ResultMessage;
     `;
     const parameters = [
-        { name: 'Name', type: TYPES.VarChar, value: data.name },
-        { name: 'Email', type: TYPES.VarChar, value: data.email },
-        { name: 'Password', type: TYPES.VarChar, value: data.password },
-        { name: 'Phone', type: TYPES.VarChar, value: data.phone },
+        { name: 'Name', type: TYPES.VarChar, value: data.name, options: { length: 100 } },
+        { name: 'Email', type: TYPES.VarChar, value: data.email, options: { length: 100 } },
+        { name: 'Password', type: TYPES.VarChar, value: data.password, options: { length: 255 } },
+        { name: 'Phone', type: TYPES.VarChar, value: data.phone, options: { length: 20 } },
         { name: 'DepartmentId', type: TYPES.Int, value: data.departmentId ?? null },
     ];
     return await executeQuery(query, parameters);
@@ -537,9 +537,9 @@ const submitComplaint = async (data) => {
         { name: 'StudentId', type: TYPES.Int, value: parseInt(data.studentId) },
         { name: 'DepartmentId', type: TYPES.Int, value: parseInt(data.departmentId) },
         { name: 'CategoryId', type: TYPES.Int, value: data.categoryId ? parseInt(data.categoryId) : null },
-        { name: 'Title', type: TYPES.VarChar, value: data.title },
+        { name: 'Title', type: TYPES.VarChar, value: data.title, options: { length: 200 } },
         { name: 'Description', type: TYPES.Text, value: data.description },
-        { name: 'Priority', type: TYPES.VarChar, value: data.priority || 'Medium' }
+        { name: 'Priority', type: TYPES.VarChar, value: data.priority || 'Medium', options: { length: 10 } }
     ];
     return await executeQuery(query, parameters);
 };
@@ -596,9 +596,9 @@ const updateStudentProfile = async (data) => {
     const query = 'EXEC UpdateStudentProfile @StudentId = @StudentId, @Name = @Name, @PhoneNumber = @PhoneNumber, @PasswordHash = @PasswordHash';
     const parameters = [
         { name: 'StudentId', type: TYPES.Int, value: parseInt(data.studentId) },
-        { name: 'Name', type: TYPES.VarChar, value: data.name },
-        { name: 'PhoneNumber', type: TYPES.VarChar, value: data.phoneNumber },
-        { name: 'PasswordHash', type: TYPES.VarChar, value: data.passwordHash || null }
+        { name: 'Name', type: TYPES.VarChar, value: data.name, options: { length: 100 } },
+        { name: 'PhoneNumber', type: TYPES.VarChar, value: data.phoneNumber, options: { length: 20 } },
+        { name: 'PasswordHash', type: TYPES.VarChar, value: data.passwordHash || null, options: { length: 255 } }
     ];
     return await executeQuery(query, parameters);
 };

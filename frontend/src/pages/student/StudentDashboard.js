@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Landmark, Bell, Settings, ClipboardList, PlusCircle } from '../../components/Icons';
 
 export default function StudentDashboard() {
     const navigate = useNavigate();
@@ -36,98 +37,153 @@ export default function StudentDashboard() {
         navigate('/login');
     };
 
-    return (
-        <div style={styles.page}>
-            <div style={styles.navbar}>
-                <span style={styles.logo}>SmartResolve Student</span>
-                <div style={styles.navRight}>
-                    <div style={styles.notifContainer} onClick={() => setShowNotifications(!showNotifications)}>
-                        <span style={styles.bellIcon}>🔔</span>
-                        {unreadCount > 0 && <span style={styles.badge}>{unreadCount}</span>}
-                    </div>
-                    <span style={styles.role}>Student</span>
-                    <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
-                </div>
-            </div>
+    const cards = [
+        {
+            id: 'card-submit-complaint',
+            onClick: () => navigate('/student/submit-complaint'),
+            Icon: PlusCircle,
+            title: 'Submit Complaint',
+            desc: 'Submit a new issue or request help.',
+            accent: 'from-violet-500 to-purple-600',
+            glow: 'shadow-violet-500/20',
+            border: 'border-violet-500/30',
+        },
+        {
+            id: 'card-my-complaints',
+            onClick: () => navigate('/student/my-complaints'),
+            Icon: ClipboardList,
+            title: 'My Complaints',
+            desc: 'View and track your submitted issues.',
+            accent: 'from-emerald-500 to-teal-600',
+            glow: 'shadow-emerald-500/20',
+            border: 'border-emerald-500/30',
+        },
+        {
+            id: 'card-profile',
+            onClick: () => navigate('/student/profile'),
+            Icon: Settings,
+            title: 'Profile Settings',
+            desc: 'Update your personal info & password.',
+            accent: 'from-amber-500 to-orange-500',
+            glow: 'shadow-amber-500/20',
+            border: 'border-amber-500/30',
+        },
+    ];
 
-            {/* Notifications Popup */}
-            {showNotifications && (
-                <div style={styles.notifPopup}>
-                    <div style={styles.notifHeader}>
-                        <h3 style={{ margin: 0, fontSize: '16px' }}>Notifications</h3>
-                        <button onClick={() => setShowNotifications(false)} style={styles.closeBtn}>×</button>
-                    </div>
-                    <div style={styles.notifList}>
-                        {notifications.length === 0 ? (
-                            <p style={styles.emptyNotif}>No notifications yet</p>
-                        ) : (
-                            notifications.map(n => (
-                                <div
-                                    key={n.notification_id}
-                                    style={{
-                                        ...styles.notifItem,
-                                        backgroundColor: n.is_read ? 'transparent' : '#0f172a',
-                                        borderLeft: n.is_read ? 'none' : '4px solid #818cf8'
-                                    }}
-                                    onClick={() => !n.is_read && handleMarkAsRead(n.notification_id)}
+    return (
+        <div className="min-h-screen bg-sr-dark">
+            {/* Navbar */}
+            <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <div 
+                            className="flex-shrink-0 flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-white"
+                            onClick={async () => {
+                                await axios.post('/api/logout', {}, { withCredentials: true });
+                                navigate('/');
+                            }}
+                        >
+                            <Landmark size={24} />
+                            <span className="text-lg font-bold tracking-tight">
+                                Smart<span className="text-violet-400">Resolve</span>
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            {/* Notifications */}
+                            <div className="relative">
+                                <button
+                                    id="notif-bell-btn"
+                                    onClick={() => setShowNotifications(!showNotifications)}
+                                    className="p-2 rounded-full hover:bg-white/10 transition-colors relative text-slate-400 hover:text-white"
                                 >
-                                    <p style={styles.notifMsg}>{n.message}</p>
-                                    <small style={styles.notifDate}>{new Date(n.created_at).toLocaleString()}</small>
-                                </div>
-                            ))
-                        )}
-                        <div style={styles.viewAll} onClick={() => navigate('/student/notifications')}>
-                            View All Notifications
+                                    <Bell size={20} />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full">
+                                            {unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {showNotifications && (
+                                    <div className="absolute right-0 mt-2 w-80 bg-sr-surface border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fadeSlideIn">
+                                        <div className="px-4 py-3 border-b border-white/[0.06] flex justify-between items-center">
+                                            <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                                            <button
+                                                onClick={() => setShowNotifications(false)}
+                                                className="text-slate-500 hover:text-slate-300 transition-colors"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto">
+                                            {notifications.length === 0 ? (
+                                                <div className="p-6 text-center text-sm text-slate-500">No notifications yet</div>
+                                            ) : (
+                                                <div className="divide-y divide-white/[0.04]">
+                                                    {notifications.map(n => (
+                                                        <div
+                                                            key={n.notification_id}
+                                                            onClick={() => !n.is_read && handleMarkAsRead(n.notification_id)}
+                                                            className={`p-4 transition-colors cursor-pointer ${n.is_read ? 'hover:bg-white/5' : 'bg-violet-500/10 hover:bg-violet-500/15 border-l-4 border-violet-500'}`}
+                                                        >
+                                                            <p className={`text-sm mb-1 ${n.is_read ? 'text-slate-400' : 'text-white font-medium'}`}>{n.message}</p>
+                                                            <p className="text-xs text-slate-600">{new Date(n.created_at).toLocaleString()}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {notifications.length > 0 && (
+                                                <div
+                                                    className="p-3 text-center text-sm font-semibold text-violet-400 hover:bg-white/5 cursor-pointer border-t border-white/[0.04] transition-colors"
+                                                    onClick={() => navigate('/student/notifications')}
+                                                >
+                                                    View All Notifications
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <span className="px-3 py-1 bg-violet-500/10 text-violet-300 text-sm font-medium rounded-full border border-violet-500/20">
+                                Student
+                            </span>
+                            <button
+                                id="logout-btn"
+                                onClick={handleLogout}
+                                className="text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                                Logout
+                            </button>
                         </div>
                     </div>
                 </div>
-            )}
+            </nav>
 
-            <div style={styles.body}>
-                <h2 style={styles.heading}>Student Dashboard</h2>
-                <p style={styles.sub}>Welcome! Manage your complaints and track their progress.</p>
-                <div style={styles.grid}>
-                    <div style={{ ...styles.card, cursor: 'pointer', borderColor: '#818cf8' }} onClick={() => navigate('/student/submit-complaint')}>
-                        <h3 style={{ ...styles.cardTitle, color: '#818cf8' }}>Submit Complaint</h3>
-                        <p style={styles.cardSub}>Submit a new issue or request help.</p>
-                    </div>
-                    <div style={{ ...styles.card, cursor: 'pointer', borderColor: '#10b981' }} onClick={() => navigate('/student/my-complaints')}>
-                        <h3 style={{ ...styles.cardTitle, color: '#10b981' }}>My Complaints</h3>
-                        <p style={styles.cardSub}>View and track your submitted issues.</p>
-                    </div>
-                    <div style={{ ...styles.card, cursor: 'pointer', borderColor: '#f43f5e' }} onClick={() => navigate('/student/profile')}>
-                        <h3 style={{ ...styles.cardTitle, color: '#f43f5e' }}>Profile Settings</h3>
-                        <p style={styles.cardSub}>Update your personal info & password.</p>
-                    </div>
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-white mb-2">Student Dashboard</h1>
+                    <p className="text-slate-400">Welcome! Manage your complaints and track their progress.</p>
                 </div>
-            </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {cards.map((c) => (
+                        <div
+                            key={c.id}
+                            id={c.id}
+                            onClick={c.onClick}
+                            className={`group cursor-pointer bg-white/[0.03] border ${c.border} rounded-2xl p-6 hover:bg-white/[0.07] transition-all duration-300 hover:shadow-xl ${c.glow} flex flex-col items-start`}
+                        >
+                            <div className={`w-12 h-12 bg-gradient-to-br ${c.accent} rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                                <c.Icon size={24} />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1">{c.title}</h3>
+                            <p className="text-sm text-slate-400">{c.desc}</p>
+                        </div>
+                    ))}
+                </div>
+            </main>
         </div>
     );
 }
-
-const styles = {
-    page: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f1f5f9' },
-    navbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', backgroundColor: '#1e293b', borderBottom: '1px solid #334155' },
-    logo: { fontSize: '18px', fontWeight: '700', color: '#818cf8' },
-    navRight: { display: 'flex', alignItems: 'center', gap: '1.5rem' },
-    role: { fontSize: '13px', color: '#94a3b8', backgroundColor: '#0f172a', padding: '4px 10px', borderRadius: '20px', border: '1px solid #334155' },
-    logoutBtn: { padding: '7px 16px', backgroundColor: 'transparent', color: '#f87171', border: '1px solid #f87171', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' },
-    notifContainer: { position: 'relative', cursor: 'pointer', fontSize: '1.2rem' },
-    badge: { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#ef4444', color: 'white', fontSize: '10px', padding: '2px 5px', borderRadius: '50%', fontWeight: 'bold' },
-    notifPopup: { position: 'absolute', top: '70px', right: '2rem', width: '300px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', zIndex: 1000, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' },
-    notifHeader: { padding: '1rem', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    closeBtn: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' },
-    notifList: { maxHeight: '400px', overflowY: 'auto' },
-    notifItem: { padding: '1rem', borderBottom: '1px solid #334155', cursor: 'pointer', transition: 'background 0.2s' },
-    notifMsg: { margin: '0 0 0.5rem 0', fontSize: '13px', lineHeight: '1.4' },
-    notifDate: { color: '#64748b', fontSize: '11px' },
-    viewAll: { padding: '1rem', textAlign: 'center', fontSize: '13px', color: '#818cf8', cursor: 'pointer', fontWeight: '600' },
-    emptyNotif: { padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '14px' },
-    body: { padding: '2rem' },
-    heading: { fontSize: '24px', fontWeight: '600', margin: '0 0 6px' },
-    sub: { color: '#94a3b8', fontSize: '14px', margin: '0 0 2rem' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' },
-    card: { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.5rem' },
-    cardTitle: { margin: '0 0 6px', fontSize: '16px', fontWeight: '600', color: '#f1f5f9' },
-    cardSub: { margin: 0, fontSize: '13px', color: '#64748b' }
-};

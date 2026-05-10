@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Landmark, CheckCircle } from '../../components/Icons';
 
 export default function ReopenRequests() {
     const navigate = useNavigate();
@@ -41,92 +42,95 @@ export default function ReopenRequests() {
     };
 
     return (
-        <div style={styles.page}>
-            <div style={styles.navbar}>
-                <span style={styles.logo} onClick={() => navigate('/admin/dashboard')}>SmartResolve Admin</span>
-                <button style={styles.backBtn} onClick={() => navigate('/admin/dashboard')}>Back to Dashboard</button>
-            </div>
+        <div className="min-h-screen bg-sr-dark">
+            <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-white" onClick={async () => {
+                            await axios.post('/api/logout', {}, { withCredentials: true });
+                            navigate('/');
+                        }}>
+                            <Landmark size={24} />
+                            <span className="text-lg font-bold tracking-tight">Smart<span className="text-amber-400">Resolve</span></span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button 
+                                className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl text-sm font-medium transition-colors"
+                                onClick={() => navigate('/admin/dashboard')}
+                            >
+                                ← Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
 
-            <div style={styles.content}>
-                <div style={styles.header}>
-                    <h2 style={styles.heading}>Reopen Requests</h2>
-                    <p style={styles.sub}>Review and approve/reject student requests to reopen resolved complaints.</p>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-white mb-2">Reopen Requests</h1>
+                    <p className="text-slate-400">Review and approve/reject student requests to reopen resolved complaints.</p>
                 </div>
 
+                {error && <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm">{error}</div>}
+
                 {loading ? (
-                    <div style={styles.loading}>Loading requests...</div>
-                ) : error ? (
-                    <div style={styles.error}>{error}</div>
+                    <div className="flex flex-col items-center justify-center p-16 gap-4">
+                        <div className="w-10 h-10 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+                        <p className="text-slate-400 font-medium">Loading requests…</p>
+                    </div>
                 ) : requests.length === 0 ? (
-                    <div style={styles.empty}>
-                        <p>No pending reopen requests.</p>
+                    <div className="flex flex-col items-center justify-center p-16 bg-white/[0.03] rounded-3xl border border-white/[0.06]">
+                        <CheckCircle size={48} className="text-emerald-500/50 mb-4" />
+                        <p className="text-slate-400 font-medium text-lg">No pending reopen requests.</p>
                     </div>
                 ) : (
-                    <div style={styles.tableContainer}>
-                        <table style={styles.table}>
-                            <thead>
-                                <tr style={styles.tableHeader}>
-                                    <th style={styles.th}>ID</th>
-                                    <th style={styles.th}>Student</th>
-                                    <th style={styles.th}>Complaint Title</th>
-                                    <th style={styles.th}>Reason for Reopen</th>
-                                    <th style={styles.th}>Requested At</th>
-                                    <th style={styles.th}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {requests.map(req => (
-                                    <tr key={req.complaint_id} style={styles.tableRow}>
-                                        <td style={styles.td}>#{req.complaint_id}</td>
-                                        <td style={styles.td}>{req.student_name}</td>
-                                        <td style={{...styles.td, fontWeight: '500'}}>{req.title}</td>
-                                        <td style={styles.td}>{req.reason}</td>
-                                        <td style={styles.td}>{new Date(req.requested_at).toLocaleString()}</td>
-                                        <td style={{...styles.td, display: 'flex', gap: '8px'}}>
-                                            <button 
-                                                style={styles.approveBtn}
-                                                onClick={() => handleAction(req.complaint_id, 'Approve')}
-                                                disabled={processingId === req.complaint_id}
-                                            >
-                                                {processingId === req.complaint_id ? '...' : 'Approve'}
-                                            </button>
-                                            <button 
-                                                style={styles.rejectBtn}
-                                                onClick={() => handleAction(req.complaint_id, 'Reject')}
-                                                disabled={processingId === req.complaint_id}
-                                            >
-                                                {processingId === req.complaint_id ? '...' : 'Reject'}
-                                            </button>
-                                        </td>
+                    <div className="bg-white/[0.03] border border-amber-500/20 rounded-2xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-white/[0.04] border-b border-white/[0.06]">
+                                        <th className="p-4 text-sm font-semibold text-slate-400">ID</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Student</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Complaint Title</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Reason for Reopen</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Requested At</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-white/[0.04]">
+                                    {requests.map(req => (
+                                        <tr key={req.complaint_id} className="hover:bg-white/[0.04] transition-colors">
+                                            <td className="p-4 text-sm font-bold text-amber-400">#{req.complaint_id}</td>
+                                            <td className="p-4 text-sm text-slate-300 font-medium">{req.student_name}</td>
+                                            <td className="p-4 text-sm text-white font-bold">{req.title}</td>
+                                            <td className="p-4 text-sm text-slate-400 max-w-xs">{req.reason}</td>
+                                            <td className="p-4 text-sm text-slate-500">{new Date(req.requested_at).toLocaleString()}</td>
+                                            <td className="p-4">
+                                                <div className="flex gap-2">
+                                                    <button 
+                                                        className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50"
+                                                        onClick={() => handleAction(req.complaint_id, 'Approve')}
+                                                        disabled={processingId === req.complaint_id}
+                                                    >
+                                                        {processingId === req.complaint_id ? '...' : 'Approve'}
+                                                    </button>
+                                                    <button 
+                                                        className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50"
+                                                        onClick={() => handleAction(req.complaint_id, 'Reject')}
+                                                        disabled={processingId === req.complaint_id}
+                                                    >
+                                                        {processingId === req.complaint_id ? '...' : 'Reject'}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
-            </div>
+            </main>
         </div>
     );
 }
-
-const styles = {
-    page: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f1f5f9', fontFamily: "'Inter', sans-serif" },
-    navbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', backgroundColor: '#1e293b', borderBottom: '1px solid #334155' },
-    logo: { fontSize: '18px', fontWeight: '700', color: '#f59e0b', cursor: 'pointer' },
-    backBtn: { padding: '8px 16px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' },
-    content: { padding: '2rem', maxWidth: '1200px', margin: '0 auto' },
-    header: { marginBottom: '2rem' },
-    heading: { fontSize: '24px', fontWeight: '600', margin: '0 0 6px' },
-    sub: { color: '#94a3b8', fontSize: '14px', margin: 0 },
-    loading: { textAlign: 'center', padding: '3rem', color: '#94a3b8' },
-    error: { padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' },
-    empty: { textAlign: 'center', padding: '4rem 2rem', backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155', color: '#94a3b8' },
-    tableContainer: { backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155', overflow: 'hidden' },
-    table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
-    tableHeader: { backgroundColor: '#0f172a' },
-    th: { padding: '1rem', fontSize: '13px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' },
-    tableRow: { borderBottom: '1px solid #334155', transition: 'background-color 0.2s' },
-    td: { padding: '1rem', fontSize: '14px', color: '#f1f5f9' },
-    approveBtn: { padding: '6px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' },
-    rejectBtn: { padding: '6px 12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }
-};

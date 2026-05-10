@@ -6,19 +6,13 @@ export default function ManageUsers() {
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [departments, setDepartments] = useState([]);
-    const [activeTab, setActiveTab] = useState('Student'); // 'Student' or 'Staff'
+    const [activeTab, setActiveTab] = useState('Student');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Form state
     const [showAddForm, setShowAddForm] = useState(false);
     const [formData, setFormData] = useState({
-        role: 'Student',
-        name: '',
-        email: '',
-        password: '',
-        phone: '',
-        departmentId: ''
+        role: 'Student', name: '', email: '', password: '', phone: '', departmentId: ''
     });
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState(null);
@@ -92,179 +86,140 @@ export default function ManageUsers() {
         }
     };
 
+    const inputClass = "w-full bg-white/[0.05] border border-white/10 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 rounded-xl px-4 py-2.5 outline-none transition-all text-white placeholder-slate-500";
+
     return (
-        <div style={styles.page}>
-            <div style={styles.header}>
-                <h2 style={styles.heading}>Manage Users</h2>
-                <button style={styles.backBtn} onClick={() => navigate('/admin/dashboard')}>
-                    Back to Dashboard
-                </button>
-            </div>
-
-            {error && <p style={styles.error}>{error}</p>}
-
-            <div style={styles.tabsContainer}>
-                <button 
-                    style={activeTab === 'Student' ? styles.activeTab : styles.tab} 
-                    onClick={() => { setActiveTab('Student'); setShowAddForm(false); setFormData(prev => ({...prev, role: 'Student'})); }}
-                >
-                    Students
-                </button>
-                <button 
-                    style={activeTab === 'Staff' ? styles.activeTab : styles.tab} 
-                    onClick={() => { setActiveTab('Staff'); setShowAddForm(false); setFormData(prev => ({...prev, role: 'Staff'})); }}
-                >
-                    Staff
-                </button>
-            </div>
-
-            <div style={styles.actionsBar}>
-                <button style={styles.addBtn} onClick={() => {
-                    setShowAddForm(!showAddForm);
-                    setFormData(prev => ({ ...prev, role: activeTab }));
-                }}>
-                    {showAddForm ? 'Cancel' : `+ Add ${activeTab}`}
-                </button>
-            </div>
-
-            {showAddForm && (
-                <div style={styles.formCard}>
-                    <h3 style={styles.formTitle}>Add New {activeTab}</h3>
-                    {formError && <p style={styles.error}>{formError}</p>}
-                    <form onSubmit={handleAddSubmit} style={styles.form}>
-                        <input
-                            type="text"
-                            placeholder="Full Name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            required
-                            style={styles.input}
-                        />
-                        <input
-                            type="email"
-                            placeholder="Email Address"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            required
-                            style={styles.input}
-                        />
-                        <input
-                            type="password"
-                            placeholder="Password"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            required
-                            style={styles.input}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Phone (11 digits)"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            style={styles.input}
-                        />
-                        <select
-                            value={formData.departmentId}
-                            onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                            required={activeTab === 'Staff'}
-                            style={styles.input}
-                        >
-                            <option value="">{activeTab === 'Staff' ? 'Select Department (Required)' : 'Select Department (Optional)'}</option>
-                            {departments.map(d => (
-                                <option key={d.departmentId} value={d.departmentId}>{d.departmentName}</option>
-                            ))}
-                        </select>
-                        <button type="submit" style={styles.submitBtn} disabled={formLoading}>
-                            {formLoading ? 'Adding...' : 'Add User'}
-                        </button>
-                    </form>
+        <div className="min-h-screen bg-sr-dark p-4 sm:p-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                        <h2 className="text-3xl font-bold text-white mb-1">Manage Users</h2>
+                        <p className="text-slate-400">View and manage system users</p>
+                    </div>
+                    <button 
+                        className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl text-sm font-medium transition-colors"
+                        onClick={() => navigate('/admin/dashboard')}
+                    >
+                        ← Dashboard
+                    </button>
                 </div>
-            )}
 
-            {loading ? (
-                <p>Loading users...</p>
-            ) : (
-                <div style={styles.tableContainer}>
-                    <table style={styles.table}>
-                        <thead>
-                            <tr>
-                                <th style={styles.th}>Name</th>
-                                <th style={styles.th}>Email</th>
-                                <th style={styles.th}>Department</th>
-                                <th style={styles.th}>Phone</th>
-                                <th style={styles.th}>Status</th>
-                                <th style={styles.th}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredUsers.length === 0 ? (
-                                <tr>
-                                    <td colSpan="6" style={{ textAlign: 'center', padding: '1rem' }}>No users found.</td>
-                                </tr>
-                            ) : (
-                                filteredUsers.map(user => (
-                                    <tr key={user.id} style={styles.tr}>
-                                        <td style={styles.td}>{user.name}</td>
-                                        <td style={styles.td}>{user.email}</td>
-                                        <td style={styles.td}>{user.department_name || 'N/A'}</td>
-                                        <td style={styles.td}>{user.phone || 'N/A'}</td>
-                                        <td style={styles.td}>
-                                            <span style={user.is_active ? styles.statusActive : styles.statusInactive}>
-                                                {user.is_active ? 'Active' : 'Deactivated'}
-                                            </span>
-                                        </td>
-                                        <td style={styles.td}>
-                                            {user.is_active ? (
-                                                <button 
-                                                    style={styles.deactivateBtn} 
-                                                    onClick={() => handleDeactivate(user.id, user.role)}
-                                                >
-                                                    Deactivate
-                                                </button>
-                                            ) : (
-                                                <button 
-                                                    style={styles.activateBtn} 
-                                                    onClick={() => handleActivate(user.id, user.role)}
-                                                >
-                                                    Activate
-                                                </button>
-                                            )}
-                                        </td>
+                {error && <p className="text-red-400 text-sm mb-6 bg-red-500/10 p-4 rounded-xl border border-red-500/20">{error}</p>}
+
+                {/* Tabs */}
+                <div className="flex gap-4 mb-6 border-b border-white/10 pb-4">
+                    <button 
+                        className={`px-6 py-2 rounded-xl font-medium transition-all ${activeTab === 'Student' ? 'bg-amber-500 text-white shadow-md' : 'bg-white/[0.03] text-slate-400 hover:bg-white/10 border border-white/5'}`}
+                        onClick={() => { setActiveTab('Student'); setShowAddForm(false); setFormData(prev => ({...prev, role: 'Student'})); }}
+                    >
+                        Students
+                    </button>
+                    <button 
+                        className={`px-6 py-2 rounded-xl font-medium transition-all ${activeTab === 'Staff' ? 'bg-amber-500 text-white shadow-md' : 'bg-white/[0.03] text-slate-400 hover:bg-white/10 border border-white/5'}`}
+                        onClick={() => { setActiveTab('Staff'); setShowAddForm(false); setFormData(prev => ({...prev, role: 'Staff'})); }}
+                    >
+                        Staff
+                    </button>
+                </div>
+
+                {/* Action Bar */}
+                <div className="flex justify-end mb-6">
+                    <button 
+                        className={`px-6 py-2 rounded-xl font-medium text-white shadow-md transition-colors ${showAddForm ? 'bg-white/10 hover:bg-white/20' : 'bg-emerald-600 hover:bg-emerald-500'}`}
+                        onClick={() => {
+                            setShowAddForm(!showAddForm);
+                            setFormData(prev => ({ ...prev, role: activeTab }));
+                        }}
+                    >
+                        {showAddForm ? 'Cancel' : `+ Add ${activeTab}`}
+                    </button>
+                </div>
+
+                {/* Add Form */}
+                {showAddForm && (
+                    <div className="bg-white/[0.03] border border-amber-500/20 shadow-lg rounded-2xl p-6 mb-8 transition-all">
+                        <h3 className="text-xl font-bold text-white mb-4">Add New {activeTab}</h3>
+                        {formError && <p className="text-red-400 text-sm mb-4 bg-red-500/10 p-3 rounded-xl border border-red-500/20">{formError}</p>}
+                        
+                        <form onSubmit={handleAddSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <input type="text" placeholder="Full Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className={inputClass} />
+                            <input type="email" placeholder="Email Address" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className={inputClass} />
+                            <input type="password" placeholder="Password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required className={inputClass} />
+                            <input type="text" placeholder="Phone (11 digits)" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className={inputClass} />
+                            <select value={formData.departmentId} onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })} required={activeTab === 'Staff'} className={`${inputClass} appearance-none`}>
+                                <option value="" className="bg-gray-900">{activeTab === 'Staff' ? 'Select Department (Required)' : 'Select Department (Optional)'}</option>
+                                {departments.map(d => <option key={d.departmentId} value={d.departmentId} className="bg-gray-900">{d.departmentName}</option>)}
+                            </select>
+                            <button type="submit" disabled={formLoading} className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-white shadow-md rounded-xl font-semibold transition-all duration-300 disabled:opacity-70">
+                                {formLoading ? 'Adding...' : 'Add User'}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {/* Table */}
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center p-12">
+                        <div className="w-10 h-10 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div>
+                        <p className="mt-4 text-slate-400 font-medium">Loading users...</p>
+                    </div>
+                ) : (
+                    <div className="bg-white/[0.03] border border-amber-500/20 rounded-2xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-white/[0.04] border-b border-white/[0.06]">
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Name</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Email</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Department</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Phone</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Status</th>
+                                        <th className="p-4 text-sm font-semibold text-slate-400">Actions</th>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                                </thead>
+                                <tbody className="divide-y divide-white/[0.04]">
+                                    {filteredUsers.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" className="p-8 text-center text-slate-500 text-sm">No users found.</td>
+                                        </tr>
+                                    ) : (
+                                        filteredUsers.map(user => (
+                                            <tr key={user.id} className="hover:bg-white/[0.04] transition-colors">
+                                                <td className="p-4 text-sm font-medium text-white">{user.name}</td>
+                                                <td className="p-4 text-sm text-slate-400">{user.email}</td>
+                                                <td className="p-4 text-sm text-slate-400">{user.department_name || 'N/A'}</td>
+                                                <td className="p-4 text-sm text-slate-400">{user.phone || 'N/A'}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${user.is_active ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                                                        {user.is_active ? 'Active' : 'Deactivated'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    {user.is_active ? (
+                                                        <button 
+                                                            className="px-4 py-1.5 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-medium transition-colors"
+                                                            onClick={() => handleDeactivate(user.id, user.role)}
+                                                        >
+                                                            Deactivate
+                                                        </button>
+                                                    ) : (
+                                                        <button 
+                                                            className="px-4 py-1.5 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium transition-colors"
+                                                            onClick={() => handleActivate(user.id, user.role)}
+                                                        >
+                                                            Activate
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
-
-const styles = {
-    page: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f1f5f9', padding: '2rem' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' },
-    heading: { fontSize: '24px', fontWeight: '600', margin: 0 },
-    backBtn: { padding: '8px 16px', backgroundColor: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-    error: { color: '#f87171', backgroundColor: '#450a0a', padding: '10px', borderRadius: '8px', marginBottom: '1rem' },
-    tabsContainer: { display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #334155', paddingBottom: '1rem' },
-    tab: { padding: '8px 24px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer' },
-    activeTab: { padding: '8px 24px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
-    actionsBar: { display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' },
-    addBtn: { padding: '8px 16px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' },
-    formCard: { backgroundColor: '#1e293b', padding: '1.5rem', borderRadius: '12px', border: '1px solid #334155', marginBottom: '2rem' },
-    formTitle: { margin: '0 0 1rem 0' },
-    form: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' },
-    input: { padding: '10px', borderRadius: '8px', border: '1px solid #475569', backgroundColor: '#0f172a', color: '#f1f5f9' },
-    submitBtn: { padding: '10px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-    tableContainer: { overflowX: 'auto', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' },
-    table: { width: '100%', borderCollapse: 'collapse' },
-    th: { textAlign: 'left', padding: '1rem', borderBottom: '1px solid #334155', color: '#94a3b8', fontWeight: '500' },
-    tr: { borderBottom: '1px solid #334155' },
-    td: { padding: '1rem' },
-    statusActive: { padding: '4px 8px', backgroundColor: '#064e3b', color: '#34d399', borderRadius: '4px', fontSize: '12px' },
-    statusInactive: { padding: '4px 8px', backgroundColor: '#450a0a', color: '#f87171', borderRadius: '4px', fontSize: '12px' },
-    deactivateBtn: { padding: '6px 12px', backgroundColor: 'transparent', color: '#f87171', border: '1px solid #f87171', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
-    activateBtn: { padding: '6px 12px', backgroundColor: 'transparent', color: '#34d399', border: '1px solid #34d399', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
-    deactivatedText: { color: '#64748b', fontSize: '12px', fontStyle: 'italic' }
-};

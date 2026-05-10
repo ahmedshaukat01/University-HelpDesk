@@ -1,23 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Landmark, ClipboardList, BarChart, Settings, PlusCircle, Star, Zap, Clock, Users, Building, Wrench, XCircle, CheckCircle } from '../../components/Icons';
 
 const PRIORITY_COLORS = {
-  High: { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' },
-  Medium: { bg: '#fef3c7', text: '#d97706', border: '#fcd34d' },
-  Low: { bg: '#d1fae5', text: '#059669', border: '#6ee7b7' },
+  High: 'bg-red-500/20 text-red-400 border border-red-500/30',
+  Medium: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+  Low: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
 };
+
 const STATUS_COLORS = {
-  Pending: { bg: '#1e3a5f', text: '#60a5fa' },
-  'In-Progress': { bg: '#1e293b', text: '#a78bfa' },
-  Resolved: { bg: '#064e3b', text: '#34d399' },
-  Rejected: { bg: '#3b0f0f', text: '#f87171' },
-  Reopened: { bg: '#1e293b', text: '#fb923c' },
+  Pending: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  'In-Progress': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  Resolved: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  Rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+  Reopened: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
 };
 
 export default function ManageComplaints() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('all');        // 'all' | 'unassigned' | 'assigned'
+  const [activeTab, setActiveTab] = useState('all');        // 'all' | 'unassigned' | 'assigned' | 'starred'
   const [complaints, setComplaints] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,6 @@ export default function ManageComplaints() {
 
   const fetchAllStaff = async () => {
     try {
-      // We can use the existing users endpoint and filter for staff
       const res = await axios.get('/api/admin/users', { withCredentials: true });
       const staffOnly = res.data.filter(u => u.role === 'Staff' && u.is_active);
       setAllStaff(staffOnly);
@@ -78,7 +79,6 @@ export default function ManageComplaints() {
     setError('');
     try {
       const params = {};
-      // If we are on starred tab, we fetch 'all' and filter locally to bypass SQL issues
       const effectiveFilter = activeTab === 'starred' ? 'all' : activeTab;
 
       if (effectiveFilter === 'unassigned') params.filter = 'unassigned';
@@ -91,7 +91,6 @@ export default function ManageComplaints() {
       const res = await axios.get('/api/admin/complaints', { params, withCredentials: true });
       
       if (activeTab === 'starred') {
-        // Show both manually starred items AND Major Incidents in the Watchlist
         setComplaints(res.data.filter(c => c.is_starred || c.is_major_incident));
       } else {
         setComplaints(res.data);
@@ -103,7 +102,6 @@ export default function ManageComplaints() {
     }
   }, [activeTab, filterDept, filterPriority]);
 
-  // Fetch departments for filter dropdown
   useEffect(() => {
     axios.get('/api/departments', { withCredentials: true })
       .then(r => setDepartments(r.data))
@@ -213,88 +211,130 @@ export default function ManageComplaints() {
     navigate('/admin/login');
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div style={S.page}>
-      {/* ── Navbar ── */}
-      <nav style={S.navbar}>
-        <span style={S.logo}>SmartResolve</span>
-        <div style={S.navMid}>
-          <button style={S.navLink} onClick={() => navigate('/admin/dashboard')}>Dashboard</button>
-          <button style={{ ...S.navLink, ...S.navActive }}>Manage Complaints</button>
-        </div>
-        <div style={S.navRight}>
-          <span style={S.roleTag}>Admin</span>
-          <button style={S.logoutBtn} onClick={handleLogout}>Logout</button>
-        </div>
+    <div className="min-h-screen bg-sr-dark">
+      {/* Navbar */}
+      <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center h-16">
+                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-white" onClick={async () => {
+                      await axios.post('/api/logout', {}, { withCredentials: true });
+                      navigate('/');
+                  }}>
+                      <Landmark size={24} />
+                      <span className="text-lg font-bold tracking-tight">Smart<span className="text-amber-400">Resolve</span> Admin</span>
+                  </div>
+                  <div className="hidden md:flex gap-2">
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/dashboard')}>Dashboard</button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 shadow-sm transition-colors">Manage Complaints</button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/reports')}>Reports</button>
+                  </div>
+                  <div className="flex items-center gap-4">
+                      <span className="px-3 py-1 bg-amber-500/10 text-amber-400 text-sm font-medium rounded-full border border-amber-500/20">
+                          Admin
+                      </span>
+                      <button 
+                          onClick={handleLogout}
+                          className="text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                          Logout
+                      </button>
+                  </div>
+              </div>
+          </div>
       </nav>
 
-      {/* ── Main ── */}
-      <div style={S.main}>
-        <div style={S.headerRow}>
+      {/* Main Content */}
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 style={S.pageTitle}>Manage Complaints</h1>
-            <p style={S.pageSub}>Review, prioritise, and track all student complaints</p>
+            <h1 className="text-3xl font-bold text-white mb-1">Manage Complaints</h1>
+            <p className="text-slate-400 text-sm">Review, prioritise, and track all student complaints</p>
           </div>
-          <div style={S.stats}>
-            <span style={S.statBadge}>{complaints.length} shown</span>
+          <div className="bg-white/[0.05] border border-white/10 px-4 py-1.5 rounded-full shadow-sm">
+            <span className="text-amber-400 text-sm font-semibold">{complaints.length} shown</span>
           </div>
         </div>
 
-        {/* ── Tab buttons ── */}
-        <div style={S.tabRow}>
-          {['all', 'unassigned', 'assigned', 'starred'].map(tab => (
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-3 mb-6">
+          {[
+            { id: 'all', label: 'All', Icon: ClipboardList },
+            { id: 'unassigned', label: 'Unassigned', Icon: XCircle },
+            { id: 'assigned', label: 'Assigned', Icon: CheckCircle },
+            { id: 'starred', label: 'Watchlist', Icon: Star }
+          ].map(tab => (
             <button
-              key={tab}
-              style={activeTab === tab ? { ...S.tab, ...S.tabActive } : S.tab}
-              onClick={() => { setActiveTab(tab); setFilterDept(''); setFilterPriority(''); }}
+              key={tab.id}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-sm ${
+                activeTab === tab.id 
+                  ? 'bg-amber-500 text-white shadow-md transform scale-105' 
+                  : 'bg-white/[0.03] text-slate-400 hover:bg-white/10 border border-white/5'
+              }`}
+              onClick={() => { setActiveTab(tab.id); setFilterDept(''); setFilterPriority(''); }}
             >
-              {tab === 'all' ? '📋 All' : tab === 'unassigned' ? '🔴 Unassigned' : tab === 'assigned' ? '✅ Assigned' : '⭐ Watchlist'}
+              <tab.Icon size={16} />
+              {tab.label}
             </button>
           ))}
         </div>
 
-        {/* ── Assigned sub-filters ── */}
+        {/* Assigned Filters */}
         {activeTab === 'assigned' && (
-          <div style={S.filterRow}>
-            <label style={S.filterLabel}>Department</label>
-            <select style={S.select} value={filterDept} onChange={e => setFilterDept(e.target.value)}>
-              <option value="">All Departments</option>
-              {departments.map(d => (
-                <option key={d.departmentId} value={d.departmentId}>{d.departmentName}</option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center gap-4 mb-6 bg-white/[0.03] backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] shadow-sm">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-400">Department</label>
+              <select 
+                className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none text-white min-w-[150px]"
+                value={filterDept} 
+                onChange={e => setFilterDept(e.target.value)}
+              >
+                <option value="" className="bg-gray-900">All Departments</option>
+                {departments.map(d => (
+                  <option key={d.departmentId} value={d.departmentId} className="bg-gray-900">{d.departmentName}</option>
+                ))}
+              </select>
+            </div>
 
-            <label style={S.filterLabel}>Priority</label>
-            <select style={S.select} value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
-              <option value="">All Priorities</option>
-              <option value="High">🔴 High</option>
-              <option value="Medium">🟡 Medium</option>
-              <option value="Low">🟢 Low</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-400">Priority</label>
+              <select 
+                className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none text-white min-w-[150px]"
+                value={filterPriority} 
+                onChange={e => setFilterPriority(e.target.value)}
+              >
+                <option value="" className="bg-gray-900">All Priorities</option>
+                <option value="High" className="bg-gray-900">High</option>
+                <option value="Medium" className="bg-gray-900">Medium</option>
+                <option value="Low" className="bg-gray-900">Low</option>
+              </select>
+            </div>
 
-            <button style={S.clearBtn} onClick={() => { setFilterDept(''); setFilterPriority(''); }}>
+            <button 
+              className="text-sm text-red-400 hover:text-red-300 font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+              onClick={() => { setFilterDept(''); setFilterPriority(''); }}
+            >
               Clear Filters
             </button>
           </div>
         )}
 
-        {/* ── Error ── */}
-        {error && <div style={S.errorBanner}>{error}</div>}
+        {/* Error */}
+        {error && <div className="mb-6 p-4 bg-red-50/80 border border-red-100 text-red-600 rounded-xl text-sm">{error}</div>}
 
-        {/* ── Loading ── */}
+        {/* List / Loading */}
         {loading ? (
-          <div style={S.loadingWrap}>
-            <div style={S.spinner} />
-            <p style={S.loadingText}>Loading complaints…</p>
+          <div className="flex flex-col items-center justify-center p-16 gap-4">
+            <div className="w-10 h-10 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+            <p className="text-slate-400 font-medium">Loading complaints…</p>
           </div>
         ) : complaints.length === 0 ? (
-          <div style={S.emptyState}>
-            <span style={S.emptyIcon}>📭</span>
-            <p style={S.emptyText}>No complaints found for this filter.</p>
+          <div className="flex flex-col items-center justify-center p-16 bg-white/[0.03] backdrop-blur-sm rounded-3xl border border-white/[0.06]">
+            <ClipboardList size={64} className="text-slate-700 mb-6" />
+            <p className="text-slate-400 font-medium">No complaints found for this filter.</p>
           </div>
         ) : (
-          <div style={S.cardGrid}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {complaints.map(c => (
               <ComplaintCard
                 key={c.complaint_id}
@@ -314,52 +354,68 @@ export default function ManageComplaints() {
             ))}
           </div>
         )}
-      </div>
+      </main>
 
-      {/* ── History Modal ── */}
+      {/* History Modal */}
       {historyModal && (
-        <div style={S.modalOverlay} onClick={() => setHistoryModal(null)}>
-          <div style={S.modal} onClick={e => e.stopPropagation()}>
-            <div style={S.modalHeader}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-sr-surface border border-white/10 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start p-6 border-b border-white/10 bg-white/[0.02] rounded-t-3xl">
               <div>
-                <h2 style={S.modalTitle}>Complaint History</h2>
-                <p style={S.modalSub}>{historyModal.title}</p>
+                <h2 className="text-xl font-bold text-white">Complaint History</h2>
+                <p className="text-sm text-slate-400 mt-1">{historyModal.title}</p>
               </div>
-              <button style={S.modalClose} onClick={() => setHistoryModal(null)}>✕</button>
+              <button 
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-slate-300 hover:bg-white/20 transition-colors"
+                onClick={() => setHistoryModal(null)}
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={S.modalBody}>
+            <div className="p-6 overflow-y-auto flex-1 bg-white">
               {historyLoading ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                  <div style={S.spinner} />
-                  <p style={S.loadingText}>Loading history…</p>
+                <div className="flex flex-col items-center py-10 gap-3">
+                  <div className="w-8 h-8 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+                  <p className="text-slate-400 text-sm">Loading history…</p>
                 </div>
               ) : historyModal.error ? (
-                <p style={{ color: '#f87171' }}>{historyModal.error}</p>
+                <p className="text-red-400 text-center py-6">{historyModal.error}</p>
               ) : historyModal.history.length === 0 ? (
-                <p style={S.emptyText}>No history entries yet.</p>
+                <p className="text-slate-400 text-center py-6">No history entries yet.</p>
               ) : (
-                <div style={S.timeline}>
+                <div className="space-y-0">
                   {historyModal.history.map((h, i) => (
-                    <div key={h.history_id ?? i} style={S.timelineItem}>
-                      <div style={S.timelineDot} />
-                      <div style={S.timelineContent}>
-                        <div style={S.timelineTop}>
-                          <span style={S.actionBadge}>{h.action_type}</span>
-                          <span style={S.timelineTime}>
+                    <div key={h.history_id ?? i} className="flex gap-4 relative pb-8 last:pb-0">
+                      {/* Line connecting dots */}
+                      {i !== historyModal.history.length - 1 && (
+                        <div className="absolute top-6 left-[11px] bottom-0 w-0.5 bg-white/10" />
+                      )}
+                      
+                      <div className="w-6 h-6 rounded-full bg-white/10 border-4 border-sr-surface shadow-sm flex-shrink-0 z-10 flex items-center justify-center mt-1">
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      </div>
+                      
+                      <div className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/10 shadow-sm">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">{h.action_type}</span>
+                          <span className="text-xs text-slate-500 font-medium">
                             {h.change_time ? new Date(h.change_time).toLocaleString() : '—'}
                           </span>
                         </div>
+                        
                         {(h.old_status || h.new_status) && (
-                          <p style={S.statusChange}>
-                            {h.old_status && <span style={S.oldStatus}>{h.old_status}</span>}
-                            {h.old_status && h.new_status && <span style={{ color: '#94a3b8' }}> → </span>}
-                            {h.new_status && <span style={S.newStatus}>{h.new_status}</span>}
-                          </p>
+                          <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                            {h.old_status && <span className="text-slate-500 line-through">{h.old_status}</span>}
+                            {h.old_status && h.new_status && <span className="text-slate-500">→</span>}
+                            {h.new_status && <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{h.new_status}</span>}
+                          </div>
                         )}
-                        {h.remarks && <p style={S.remarks}>{h.remarks}</p>}
-                        <p style={S.changedBy}>
-                          By: {h.changed_by_name || 'Unknown'} ({h.changed_by_role || '—'})
+                        
+                        {h.remarks && <p className="text-sm text-slate-300 mb-3 bg-white/[0.03] p-3 rounded-xl border border-white/5">{h.remarks}</p>}
+                        
+                        <p className="text-xs text-slate-500 font-medium">
+                          By: <span className="text-slate-300">{h.changed_by_name || 'Unknown'}</span> <span className="text-slate-500">({h.changed_by_role || '—'})</span>
                         </p>
                       </div>
                     </div>
@@ -374,7 +430,7 @@ export default function ManageComplaints() {
   );
 }
 
-// ── Complaint Card ──────────────────────────────────────────────────────────────
+// ── Complaint Card Component ──────────────────────────────────────────────────
 function ComplaintCard({
   c,
   updatingId,
@@ -389,238 +445,148 @@ function ComplaintCard({
   onCluster,
   majorIncidents
 }) {
-  const priColor = PRIORITY_COLORS[c.priority] || PRIORITY_COLORS.Medium;
-  const stColor = STATUS_COLORS[c.status] || STATUS_COLORS.Pending;
+  const priClass = PRIORITY_COLORS[c.priority] || PRIORITY_COLORS.Medium;
+  const stClass = STATUS_COLORS[c.status] || STATUS_COLORS.Pending;
   const msg = updateMsg[c.complaint_id];
 
   // Filter staff for THIS complaint's department
   const deptStaff = allStaff.filter(s => Number(s.department_id) === Number(c.department_id));
 
   return (
-    <div style={S.card}>
+    <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-lg rounded-3xl p-6 transition-all hover:shadow-xl hover:-translate-y-1 relative group">
       {/* Top row */}
-      <div style={S.cardTop}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={S.cid}>#{c.complaint_id}</span>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">#{c.complaint_id}</span>
           <button
-            style={{ ...S.starBtn, color: c.is_starred ? '#f59e0b' : '#334155' }}
+            className={`transition-transform hover:scale-110 focus:outline-none ${c.is_starred ? 'text-amber-400 drop-shadow-sm' : 'text-slate-500 hover:text-amber-300'}`}
             onClick={() => onToggleStar(c.complaint_id)}
           >
-            {c.is_starred ? '★' : '☆'}
+            <Star size={20} fill={c.is_starred ? 'currentColor' : 'none'} />
           </button>
         </div>
 
-        <div style={S.statusControl}>
-          {c.is_major_incident && <span style={S.majorBadge}>⭐ STAR INCIDENT</span>}
+        <div className="flex items-center gap-2">
+          {c.is_major_incident && <Zap size={18} className="text-amber-400 fill-amber-400 animate-pulse" />}
           <select
-            style={{ ...S.statusSelect, background: stColor.bg, color: stColor.text }}
+            className={`text-xs font-bold border outline-none rounded-full px-3 py-1 cursor-pointer appearance-none text-center shadow-sm ${stClass}`}
             value={c.status}
             disabled={updatingId === c.complaint_id}
             onChange={e => onStatusChange(c.complaint_id, e.target.value)}
           >
-            <option value="Pending">Pending</option>
-            <option value="In-Progress">In-Progress</option>
-            <option value="Resolved">Resolved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Reopened">Reopened</option>
+            <option value="Pending" className="bg-gray-900">Pending</option>
+            <option value="In-Progress" className="bg-gray-900">In-Progress</option>
+            <option value="Resolved" className="bg-gray-900">Resolved</option>
+            <option value="Rejected" className="bg-gray-900">Rejected</option>
+            <option value="Reopened" className="bg-gray-900">Reopened</option>
           </select>
         </div>
       </div>
 
       {/* Title & category */}
-      <h3 style={S.cardTitle}>{c.title || 'Untitled'}</h3>
-      <p style={S.cardMeta}>
-        <span style={S.metaTag}>📂 {c.category_name || 'Uncategorised'}</span>
-        <span style={S.metaTag}>🏢 {c.department_name || '—'}</span>
-      </p>
+      <h3 className="text-lg font-bold text-white mb-2 leading-tight">{c.title || 'Untitled'}</h3>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <span className="text-xs font-semibold text-slate-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5">
+          <ClipboardList size={14} /> {c.category_name || 'Uncategorised'}
+        </span>
+        <span className="text-xs font-semibold text-slate-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5">
+          <Building size={14} /> {c.department_name || '—'}
+        </span>
+      </div>
 
       {/* Description snippet */}
       {c.description && (
-        <p style={S.description}>
+        <p className="text-sm text-slate-400 mb-5 bg-white/[0.05] p-3 rounded-xl border border-white/10 leading-relaxed">
           {c.description.length > 120 ? c.description.slice(0, 120) + '…' : c.description}
         </p>
       )}
 
       {/* Student & date */}
-      <p style={S.smallMeta}>
-        <span>👤 {c.student_name || 'Student'}</span>
-        <span>📅 {c.submission_date ? new Date(c.submission_date).toLocaleDateString() : '—'}</span>
-      </p>
+      <div className="flex justify-between items-center text-xs font-medium text-slate-500 mb-5 px-1">
+        <span className="flex items-center gap-1.5"><Users size={14} /> {c.student_name || 'Student'}</span>
+        <span className="flex items-center gap-1.5"><Clock size={14} /> {c.submission_date ? new Date(c.submission_date).toLocaleDateString() : '—'}</span>
+      </div>
 
       {/* Assigned to / Assignment Control */}
-      {c.assigned_to_staff_name ? (
-        <p style={S.assignedTo}>🔧 Assigned to: <strong>{c.assigned_to_staff_name}</strong></p>
-      ) : c.parent_complaint_id ? (
-        <p style={S.clusteredTo}>🔗 Clustered with STAR #{c.parent_complaint_id}</p>
-      ) : (
-        <div style={S.assignBox}>
-          <span style={S.assignLabel}>Unassigned - Assign to:</span>
+      <div className="mb-5">
+        {c.assigned_to_staff_name ? (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex items-center gap-2">
+            <Wrench size={16} className="text-blue-400" />
+            <p className="text-sm text-blue-300">Assigned to: <strong className="font-bold">{c.assigned_to_staff_name}</strong></p>
+          </div>
+        ) : c.parent_complaint_id ? (
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 flex items-center gap-2">
+            <PlusCircle size={16} className="text-purple-400" />
+            <p className="text-sm text-purple-300 font-semibold">Clustered with STAR #{c.parent_complaint_id}</p>
+          </div>
+        ) : (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+            <span className="text-xs font-bold text-amber-400 uppercase tracking-wide mb-2 block">Unassigned - Assign to:</span>
+            <select
+              className="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500/20 shadow-sm"
+              onChange={(e) => onAssign(c.complaint_id, e.target.value)}
+              disabled={updatingId === c.complaint_id}
+              value=""
+            >
+              <option value="" disabled className="bg-gray-900">Select Staff...</option>
+              {deptStaff.length > 0 ? (
+                deptStaff.map(s => (
+                  <option key={s.id} value={s.id} className="bg-gray-900">{s.name}</option>
+                ))
+              ) : (
+                <option disabled className="bg-gray-900">No staff in this department</option>
+              )}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* STAR Clustering Controls */}
+      {!c.is_major_incident && !c.parent_complaint_id && (
+        <div className="flex gap-2 mb-5">
+          <button 
+            className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold py-2 rounded-xl transition-colors shadow-sm"
+            onClick={() => onMarkMajor(c.complaint_id)}
+          >
+            Mark as STAR
+          </button>
           <select
-            style={S.assignSelect}
-            onChange={(e) => onAssign(c.complaint_id, e.target.value)}
-            disabled={updatingId === c.complaint_id}
+            className="flex-1 bg-white/5 border border-white/10 text-slate-400 text-xs rounded-xl px-2 py-2 outline-none shadow-sm"
+            onChange={(e) => onCluster(c.complaint_id, e.target.value)}
             value=""
           >
-            <option value="" disabled>Select Staff...</option>
-            {deptStaff.length > 0 ? (
-              deptStaff.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))
-            ) : (
-              <option disabled>No staff in this department</option>
-            )}
+            <option value="" disabled className="bg-gray-900">Cluster with...</option>
+            {majorIncidents.filter(m => m.complaint_id !== c.complaint_id).map(m => (
+              <option key={m.complaint_id} value={m.complaint_id} className="bg-gray-900">STAR #{m.complaint_id}: {m.title}</option>
+            ))}
           </select>
         </div>
       )}
 
-      {/* ── STAR Clustering Controls ── */}
-      <div style={S.starControls}>
-        {!c.is_major_incident && !c.parent_complaint_id && (
-          <>
-            <button style={S.markMajorBtn} onClick={() => onMarkMajor(c.complaint_id)}>
-              Mark as STAR
-            </button>
-            <select
-              style={S.clusterSelect}
-              onChange={(e) => onCluster(c.complaint_id, e.target.value)}
-              value=""
-            >
-              <option value="" disabled>Cluster with...</option>
-              {majorIncidents.filter(m => m.complaint_id !== c.complaint_id).map(m => (
-                <option key={m.complaint_id} value={m.complaint_id}>STAR #{m.complaint_id}: {m.title}</option>
-              ))}
-            </select>
-          </>
-        )}
-      </div>
-
-      {/* ── Priority changer ── */}
-      <div style={S.priorityRow}>
-        <span style={{ ...S.priorityBadge, background: priColor.bg, color: priColor.text, border: `1px solid ${priColor.border}` }}>
-          Priority: {c.priority}
-        </span>
-        <div style={S.priorityControl}>
+      {/* Bottom controls: Priority & History */}
+      <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10">
+        <div className="flex items-center gap-2">
           <select
-            style={S.prioritySelect}
+            className={`text-xs font-bold rounded-lg px-2.5 py-1.5 outline-none cursor-pointer shadow-sm ${priClass}`}
             value={c.priority}
             disabled={updatingId === c.complaint_id}
             onChange={e => onPriorityChange(c.complaint_id, e.target.value)}
           >
-            <option value="High">🔴 High</option>
-            <option value="Medium">🟡 Medium</option>
-            <option value="Low">🟢 Low</option>
+            <option value="High" className="bg-gray-900">High</option>
+            <option value="Medium" className="bg-gray-900">Medium</option>
+            <option value="Low" className="bg-gray-900">Low</option>
           </select>
-          {msg === 'ok' && <span style={S.updateOk}>✓ Updated</span>}
-          {msg === 'err' && <span style={S.updateErr}>✗ Failed</span>}
+          {msg === 'ok' && <span className="text-xs font-bold text-emerald-400 animate-pulse">✓</span>}
+          {msg === 'err' && <span className="text-xs font-bold text-red-400 animate-pulse">✗</span>}
         </div>
-      </div>
 
-      {/* History button */}
-      <button style={S.historyBtn} onClick={() => onHistory(c)}>
-        🕐 View History
-      </button>
+        <button 
+          className="text-xs font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+          onClick={() => onHistory(c)}
+        >
+          <Clock size={14} /> History
+        </button>
+      </div>
     </div>
   );
 }
-
-// ── Styles ──────────────────────────────────────────────────────────────────────
-const S = {
-  page: { minHeight: '100vh', backgroundColor: '#0a0f1e', color: '#f1f5f9', fontFamily: "'Inter', sans-serif" },
-
-  // Navbar
-  navbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.9rem 2rem', backgroundColor: '#0d1526', borderBottom: '1px solid #1e2d47', position: 'sticky', top: 0, zIndex: 100 },
-  logo: { fontSize: '18px', fontWeight: '800', color: '#f59e0b', letterSpacing: '0.5px' },
-  navMid: { display: 'flex', gap: '0.5rem' },
-  navLink: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '14px', cursor: 'pointer', padding: '6px 14px', borderRadius: '8px', transition: 'all 0.2s' },
-  navActive: { color: '#f59e0b', background: 'rgba(245,158,11,0.1)' },
-  navRight: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  roleTag: { fontSize: '12px', color: '#94a3b8', background: '#1e2d47', padding: '4px 10px', borderRadius: '20px' },
-  logoutBtn: { padding: '6px 14px', background: 'transparent', color: '#f87171', border: '1px solid #f87171', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' },
-
-  // Main layout
-  main: { padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' },
-  pageTitle: { fontSize: '26px', fontWeight: '700', margin: 0, color: '#f1f5f9' },
-  pageSub: { fontSize: '14px', color: '#64748b', margin: '4px 0 0' },
-  stats: { display: 'flex', gap: '0.5rem', alignItems: 'center' },
-  statBadge: { background: '#1e2d47', color: '#93c5fd', fontSize: '13px', padding: '4px 12px', borderRadius: '20px', border: '1px solid #1e3a5f' },
-
-  // Tabs
-  tabRow: { display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' },
-  tab: { padding: '9px 22px', borderRadius: '10px', border: '1px solid #1e2d47', background: '#0d1526', color: '#94a3b8', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' },
-  tabActive: { background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#0a0f1e', border: '1px solid transparent', boxShadow: '0 0 16px rgba(245,158,11,0.3)' },
-
-  // Filters
-  filterRow: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: '#0d1526', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid #1e2d47' },
-  filterLabel: { fontSize: '13px', color: '#94a3b8', fontWeight: '500' },
-  select: { background: '#111827', color: '#f1f5f9', border: '1px solid #1e2d47', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', outline: 'none' },
-  clearBtn: { background: 'transparent', color: '#f87171', border: '1px solid #f87171', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', cursor: 'pointer' },
-
-  // Cards
-  cardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' },
-  card: { background: 'linear-gradient(145deg, #0d1526, #111827)', border: '1px solid #1e2d47', borderRadius: '16px', padding: '1.5rem', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' },
-  cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' },
-  cid: { fontSize: '12px', color: '#475569', fontWeight: '600' },
-  statusControl: { display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  statusSelect: { border: 'none', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none', appearance: 'none', textAlign: 'center' },
-  cardTitle: { fontSize: '15px', fontWeight: '700', color: '#f1f5f9', margin: '0 0 0.5rem' },
-  cardMeta: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', margin: '0 0 0.6rem' },
-  metaTag: { fontSize: '12px', color: '#64748b', background: '#111827', padding: '3px 8px', borderRadius: '6px', border: '1px solid #1e2d47' },
-  description: { fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 0.75rem' },
-  smallMeta: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', margin: '0 0 0.5rem' },
-  assignedTo: { fontSize: '12px', color: '#7dd3fc', margin: '0 0 0.75rem' },
-  assignBox: { margin: '0 0 1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' },
-  assignLabel: { fontSize: '11px', color: '#f87171', fontWeight: '600' },
-  assignSelect: { background: '#111827', color: '#f1f5f9', border: '1px solid #f59e0b', borderRadius: '8px', padding: '6px', fontSize: '12px', cursor: 'pointer', outline: 'none' },
-
-  // Star controls
-  starBtn: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' },
-  majorBadge: { background: '#f59e0b', color: '#0a0f1e', fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '4px', marginRight: '8px' },
-  starControls: { display: 'flex', gap: '8px', marginBottom: '1rem' },
-  markMajorBtn: { flex: 1, padding: '6px', fontSize: '11px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' },
-  clusterSelect: { flex: 1, background: '#111827', color: '#94a3b8', border: '1px solid #1e2d47', borderRadius: '6px', padding: '6px', fontSize: '11px', cursor: 'pointer' },
-  clusteredTo: { fontSize: '12px', color: '#a78bfa', margin: '0 0 0.75rem', fontWeight: '600' },
-
-  // Priority
-  priorityRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0.75rem 0 0.75rem', gap: '0.5rem', flexWrap: 'wrap' },
-  priorityBadge: { fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '8px' },
-  priorityControl: { display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  prioritySelect: { background: '#111827', color: '#f1f5f9', border: '1px solid #334155', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', outline: 'none' },
-  updateOk: { fontSize: '12px', color: '#34d399', fontWeight: '600' },
-  updateErr: { fontSize: '12px', color: '#f87171', fontWeight: '600' },
-
-  // History button
-  historyBtn: { width: '100%', marginTop: '0.5rem', padding: '8px', background: 'rgba(99,102,241,0.1)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' },
-
-  // Misc
-  errorBanner: { background: '#3b0f0f', color: '#f87171', padding: '1rem 1.25rem', borderRadius: '10px', fontSize: '14px', marginBottom: '1rem' },
-  loadingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4rem', gap: '1rem' },
-  spinner: { width: '36px', height: '36px', border: '3px solid #1e2d47', borderTop: '3px solid #f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-  loadingText: { color: '#64748b', fontSize: '14px' },
-  emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4rem', gap: '0.75rem' },
-  emptyIcon: { fontSize: '48px' },
-  emptyText: { color: '#64748b', fontSize: '15px' },
-
-  // Modal
-  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
-  modal: { background: '#0d1526', border: '1px solid #1e2d47', borderRadius: '20px', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.5rem', borderBottom: '1px solid #1e2d47' },
-  modalTitle: { fontSize: '18px', fontWeight: '700', margin: 0, color: '#f1f5f9' },
-  modalSub: { fontSize: '13px', color: '#64748b', margin: '4px 0 0' },
-  modalClose: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '18px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px' },
-  modalBody: { padding: '1.5rem', overflowY: 'auto', flex: 1 },
-
-  // Timeline
-  timeline: { display: 'flex', flexDirection: 'column', gap: '0' },
-  timelineItem: { display: 'flex', gap: '1rem', paddingBottom: '1.5rem', position: 'relative' },
-  timelineDot: { width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b', marginTop: '5px', flexShrink: 0, boxShadow: '0 0 8px rgba(245,158,11,0.5)' },
-  timelineContent: { flex: 1, background: '#111827', borderRadius: '10px', padding: '0.75rem 1rem', border: '1px solid #1e2d47' },
-  timelineTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' },
-  actionBadge: { fontSize: '11px', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: '6px' },
-  timelineTime: { fontSize: '11px', color: '#475569' },
-  statusChange: { fontSize: '13px', margin: '0.25rem 0' },
-  oldStatus: { color: '#f87171', fontWeight: '600' },
-  newStatus: { color: '#34d399', fontWeight: '600' },
-  remarks: { fontSize: '13px', color: '#94a3b8', margin: '0.25rem 0 0' },
-  changedBy: { fontSize: '12px', color: '#475569', marginTop: '0.4rem' },
-};

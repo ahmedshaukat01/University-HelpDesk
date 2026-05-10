@@ -2,7 +2,6 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
 const cookieParser = require('cookie-parser');
 const {
     getDepartments,
@@ -105,8 +104,13 @@ app.post('/api/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
     try {
         const result = await loginUser(email);
+        if (!result || result.length === 0) return res.status(401).json({ error: 'Invalid email or password' });
+        
         const { ResultCode, UserId, Role, PasswordHash, Name, DepartmentId } = result[0];
-        if (ResultCode !== 0 || password !== PasswordHash) return res.status(401).json({ error: 'Invalid email or password' });
+        if (ResultCode !== 0) return res.status(401).json({ error: 'Invalid email or password' });
+
+        // Compare password with plain text
+        if (password !== PasswordHash) return res.status(401).json({ error: 'Invalid email or password' });
         
         const token = jwt.sign(
             { userId: UserId, role: Role, name: Name, departmentId: DepartmentId },
@@ -140,8 +144,13 @@ app.post('/api/admin/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
     try {
         const result = await adminLogin(email);
+        if (!result || result.length === 0) return res.status(401).json({ error: 'Invalid email or password' });
+
         const { ResultCode, AdminId, PasswordHash, Name } = result[0];
-        if (ResultCode !== 0 || password !== PasswordHash) return res.status(401).json({ error: 'Invalid email or password' });
+        if (ResultCode !== 0) return res.status(401).json({ error: 'Invalid email or password' });
+
+        // Compare password with plain text
+        if (password !== PasswordHash) return res.status(401).json({ error: 'Invalid email or password' });
         
         const token = jwt.sign({ userId: AdminId, role: 'Admin', name: Name }, process.env.JWT_SECRET, { expiresIn: '8h' });
         res.cookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 8 * 60 * 60 * 1000 });
@@ -623,9 +632,7 @@ app.put('/api/student/profile', requireAuth(['Student']), async (req, res) => {
     const studentId = req.user.userId;
     if (!name || !phoneNumber) return res.status(400).json({ error: 'Name and Phone Number are required' });
     try {
-        let passwordHash = null;
-        if (password) passwordHash = await bcrypt.hash(password, 10);
-        await updateStudentProfile({ studentId, name, phoneNumber, passwordHash });
+        await updateStudentProfile({ studentId, name, phoneNumber, passwordHash: password });
         res.status(200).json({ message: 'Profile updated successfully' });
     } catch (error) {
         console.error('Error updating student profile:', error);

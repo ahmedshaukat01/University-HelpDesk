@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Landmark } from '../../components/Icons';
 
 export default function AdminReports() {
   const navigate = useNavigate();
@@ -31,130 +32,96 @@ export default function AdminReports() {
   };
 
   return (
-    <div style={S.page}>
-      {/* ── Navbar ── */}
-      <nav style={S.navbar}>
-        <span style={S.logo}>SmartResolve</span>
-        <div style={S.navMid}>
-          <button style={S.navLink} onClick={() => navigate('/admin/dashboard')}>Dashboard</button>
-          <button style={S.navLink} onClick={() => navigate('/admin/complaints')}>Manage Complaints</button>
-          <button style={{ ...S.navLink, ...S.navActive }}>Reports</button>
-        </div>
-        <div style={S.navRight}>
-          <span style={S.roleTag}>Admin</span>
-          <button style={S.logoutBtn} onClick={handleLogout}>Logout</button>
-        </div>
+    <div className="min-h-screen bg-sr-dark">
+      <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center h-16">
+                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={async () => {
+                      await axios.post('/api/logout', {}, { withCredentials: true });
+                      navigate('/');
+                  }}>
+                      <span className="text-xl">🏛️</span>
+                      <span className="text-lg font-bold text-white tracking-tight">Smart<span className="text-amber-400">Resolve</span></span>
+                  </div>
+                  <div className="hidden md:flex gap-2">
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/dashboard')}>Dashboard</button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/complaints')}>Complaints</button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20">Reports</button>
+                  </div>
+                  <div className="flex items-center gap-4">
+                      <span className="px-3 py-1 bg-amber-500/10 text-amber-300 text-sm font-medium rounded-full border border-amber-500/20">Admin</span>
+                      <button onClick={handleLogout} className="text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors">Logout</button>
+                  </div>
+              </div>
+          </div>
       </nav>
 
-      {/* ── Main ── */}
-      <div style={S.main}>
-        <div style={S.headerRow}>
-          <div>
-            <h1 style={S.pageTitle}>Department Reports</h1>
-            <p style={S.pageSub}>Performance and resolution statistics by department</p>
-          </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Department Reports</h1>
+          <p className="text-slate-400">Performance and resolution statistics by department</p>
         </div>
-
-        {error && <div style={S.errorBanner}>{error}</div>}
+        {error && <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm">{error}</div>}
 
         {loading ? (
-          <div style={S.loadingWrap}>
-            <div style={S.spinner} />
-            <p style={S.loadingText}>Loading reports…</p>
+          <div className="flex flex-col items-center justify-center p-16 gap-4">
+            <div className="w-10 h-10 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+            <p className="text-slate-400 font-medium">Loading reports…</p>
           </div>
         ) : (
-          <div style={S.tableContainer}>
-            <table style={S.table}>
-              <thead>
-                <tr>
-                  <th style={S.th}>Department</th>
-                  <th style={S.thCenter}>Total Complaints</th>
-                  <th style={S.thCenter}>Pending</th>
-                  <th style={S.thCenter}>In-Progress</th>
-                  <th style={S.thCenter}>Resolved</th>
-                  <th style={S.thCenter}>Rejected</th>
-                  <th style={S.thCenter}>Reopened</th>
-                  <th style={S.thCenter}>Resolution %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" style={S.emptyState}>No data available</td>
+          <div className="bg-white/[0.03] border border-amber-500/20 rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white/[0.04] border-b border-white/[0.06]">
+                    <th className="p-4 text-sm font-semibold text-slate-400">Department</th>
+                    <th className="p-4 text-sm font-semibold text-slate-400 text-center">Total</th>
+                    <th className="p-4 text-sm font-semibold text-slate-400 text-center">Pending</th>
+                    <th className="p-4 text-sm font-semibold text-slate-400 text-center">In-Progress</th>
+                    <th className="p-4 text-sm font-semibold text-slate-400 text-center">Resolved</th>
+                    <th className="p-4 text-sm font-semibold text-slate-400 text-center">Rejected</th>
+                    <th className="p-4 text-sm font-semibold text-slate-400 text-center">Reopened</th>
+                    <th className="p-4 text-sm font-semibold text-slate-400 text-center">Resolution %</th>
                   </tr>
-                ) : (
-                  reports.map((r, i) => (
-                    <tr key={r.department_id || i} style={S.tr}>
-                      <td style={S.tdName}>{r.department_name}</td>
-                      <td style={S.tdCenter}><strong>{r.total_complaints}</strong></td>
-                      <td style={{ ...S.tdCenter, color: '#60a5fa' }}>{r.pending_complaints}</td>
-                      <td style={{ ...S.tdCenter, color: '#a78bfa' }}>{r.in_progress_complaints}</td>
-                      <td style={{ ...S.tdCenter, color: '#34d399' }}>{r.resolved_complaints}</td>
-                      <td style={{ ...S.tdCenter, color: '#f87171' }}>{r.rejected_complaints}</td>
-                      <td style={{ ...S.tdCenter, color: '#fb923c' }}>{r.reopened_complaints}</td>
-                      <td style={S.tdCenter}>
-                        <div style={S.progressWrapper}>
-                          <div style={S.progressBg}>
-                            <div 
-                              style={{ 
-                                ...S.progressFill, 
-                                width: `${r.resolution_percentage}%`,
-                                backgroundColor: r.resolution_percentage >= 75 ? '#34d399' : r.resolution_percentage >= 50 ? '#fbbf24' : '#f87171'
-                              }} 
-                            />
-                          </div>
-                          <span style={S.progressText}>{r.resolution_percentage}%</span>
-                        </div>
-                      </td>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {reports.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="p-8 text-center text-slate-500 text-sm">No data available</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    reports.map((r, i) => (
+                      <tr key={r.department_id || i} className="hover:bg-white/[0.04] transition-colors">
+                        <td className="p-4 text-sm font-semibold text-white">{r.department_name}</td>
+                        <td className="p-4 text-sm text-center font-bold text-white">{r.total_complaints}</td>
+                        <td className="p-4 text-sm text-center font-medium text-violet-400">{r.pending_complaints}</td>
+                        <td className="p-4 text-sm text-center font-medium text-amber-400">{r.in_progress_complaints}</td>
+                        <td className="p-4 text-sm text-center font-medium text-emerald-400">{r.resolved_complaints}</td>
+                        <td className="p-4 text-sm text-center font-medium text-red-400">{r.rejected_complaints}</td>
+                        <td className="p-4 text-sm text-center font-medium text-orange-400">{r.reopened_complaints}</td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-3">
+                            <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  r.resolution_percentage >= 75 ? 'bg-emerald-500' :
+                                  r.resolution_percentage >= 50 ? 'bg-amber-400' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${r.resolution_percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-400 min-w-[36px] text-right">{r.resolution_percentage}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
-
-// ── Styles ──────────────────────────────────────────────────────────────────────
-const S = {
-  page: { minHeight: '100vh', backgroundColor: '#0a0f1e', color: '#f1f5f9', fontFamily: "'Inter', sans-serif" },
-
-  // Navbar
-  navbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.9rem 2rem', backgroundColor: '#0d1526', borderBottom: '1px solid #1e2d47', position: 'sticky', top: 0, zIndex: 100 },
-  logo: { fontSize: '18px', fontWeight: '800', color: '#f59e0b', letterSpacing: '0.5px' },
-  navMid: { display: 'flex', gap: '0.5rem' },
-  navLink: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '14px', cursor: 'pointer', padding: '6px 14px', borderRadius: '8px', transition: 'all 0.2s' },
-  navActive: { color: '#f59e0b', background: 'rgba(245,158,11,0.1)' },
-  navRight: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  roleTag: { fontSize: '12px', color: '#94a3b8', background: '#1e2d47', padding: '4px 10px', borderRadius: '20px' },
-  logoutBtn: { padding: '6px 14px', background: 'transparent', color: '#f87171', border: '1px solid #f87171', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' },
-
-  // Main layout
-  main: { padding: '2rem 2.5rem', maxWidth: '1200px', margin: '0 auto' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' },
-  pageTitle: { fontSize: '26px', fontWeight: '700', margin: 0, color: '#f1f5f9' },
-  pageSub: { fontSize: '14px', color: '#64748b', margin: '4px 0 0' },
-
-  tableContainer: { background: '#0d1526', border: '1px solid #1e2d47', borderRadius: '12px', overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
-  th: { padding: '16px', borderBottom: '1px solid #1e2d47', backgroundColor: '#111827', color: '#94a3b8', fontSize: '13px', fontWeight: '600' },
-  thCenter: { padding: '16px', borderBottom: '1px solid #1e2d47', backgroundColor: '#111827', color: '#94a3b8', fontSize: '13px', fontWeight: '600', textAlign: 'center' },
-  tr: { borderBottom: '1px solid #1e2d47', transition: 'background 0.2s' },
-  tdName: { padding: '16px', fontSize: '14px', color: '#f1f5f9', fontWeight: '500' },
-  tdCenter: { padding: '16px', fontSize: '14px', textAlign: 'center' },
-  
-  progressWrapper: { display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' },
-  progressBg: { width: '80px', height: '6px', background: '#1e2d47', borderRadius: '3px', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: '3px', transition: 'width 0.5s ease' },
-  progressText: { fontSize: '12px', color: '#cbd5e1', minWidth: '40px', textAlign: 'right' },
-
-  // Misc
-  errorBanner: { background: '#3b0f0f', color: '#f87171', padding: '1rem 1.25rem', borderRadius: '10px', fontSize: '14px', marginBottom: '1rem' },
-  loadingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4rem', gap: '1rem' },
-  spinner: { width: '36px', height: '36px', border: '3px solid #1e2d47', borderTop: '3px solid #f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-  loadingText: { color: '#64748b', fontSize: '14px' },
-  emptyState: { textAlign: 'center', padding: '3rem', color: '#64748b', fontSize: '14px' },
-};

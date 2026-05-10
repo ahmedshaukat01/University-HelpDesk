@@ -51,89 +51,89 @@ export default function AdminProfile() {
         }
     };
 
-    if (loading) return <div style={styles.page}><p>Loading...</p></div>;
+    if (loading) return (
+        <div className="min-h-screen bg-sr-dark flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+                <p className="text-slate-400 font-medium">Loading...</p>
+            </div>
+        </div>
+    );
 
     return (
-        <div style={styles.page}>
-            <div style={styles.header}>
-                <h2 style={styles.heading}>Change Personal Info</h2>
-                <button style={styles.backBtn} onClick={() => navigate('/admin/dashboard')}>
-                    Back to Dashboard
-                </button>
-            </div>
-
-            <div style={styles.card}>
-                {error && <p style={styles.error}>{error}</p>}
-                {success && <p style={styles.success}>{success}</p>}
-
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>Email (Read-only)</label>
-                        <input
-                            type="email"
-                            name="email"
-                            value={profile.email}
-                            readOnly
-                            style={{ ...styles.input, backgroundColor: '#334155', cursor: 'not-allowed' }}
-                        />
+        <div className="min-h-screen bg-sr-dark p-4 sm:p-8">
+            <div className="max-w-2xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">Change Personal Info</h1>
+                        <p className="text-slate-400 text-sm">Update your admin account details.</p>
                     </div>
-                    
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>Full Name</label>
-                        <input
-                            type="text"
-                            name="name"
-                            value={profile.name}
-                            onChange={handleChange}
-                            required
-                            style={styles.input}
-                        />
-                    </div>
-
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>Phone Number</label>
-                        <input
-                            type="text"
-                            name="phone"
-                            value={profile.phone}
-                            onChange={handleChange}
-                            required
-                            style={styles.input}
-                        />
-                    </div>
-
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>New Password (Optional)</label>
-                        <input
-                            type="password"
-                            name="password"
-                            value={profile.password}
-                            onChange={handleChange}
-                            placeholder="Leave blank to keep current password"
-                            style={styles.input}
-                        />
-                    </div>
-
-                    <button type="submit" style={styles.submitBtn} disabled={updating}>
-                        {updating ? 'Updating...' : 'Save Changes'}
+                    <button
+                        id="admin-profile-back-btn"
+                        className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl font-medium transition-colors"
+                        onClick={() => navigate('/admin/dashboard')}
+                    >
+                        ← Dashboard
                     </button>
-                </form>
+                </div>
+
+                <div className="bg-white/[0.03] border border-amber-500/20 rounded-2xl p-8">
+                    {error && <p className="text-red-400 text-sm mb-6 bg-red-500/10 border border-red-500/20 p-4 rounded-xl">{error}</p>}
+                    {success && <p className="text-emerald-400 text-sm mb-6 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl">{success}</p>}
+
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold text-slate-300">Email (Read-only)</label>
+                            <input type="email" name="email" value={profile.email} readOnly
+                                className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed outline-none" />
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold text-slate-300">Full Name</label>
+                            <input
+                                type="text"
+                                name="name"
+                                value={profile.name}
+                                onChange={handleChange}
+                                required
+                                className="w-full bg-white/[0.05] border border-white/10 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 rounded-xl px-4 py-3 outline-none transition-all text-white"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold text-slate-300">Phone Number</label>
+                            <input
+                                type="text"
+                                name="phone"
+                                value={profile.phone}
+                                onChange={handleChange}
+                                required
+                                className="w-full bg-white/[0.05] border border-white/10 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 rounded-xl px-4 py-3 outline-none transition-all text-white"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold text-slate-300">New Password (Optional)</label>
+                            <input
+                                type="password"
+                                name="password"
+                                value={profile.password}
+                                onChange={handleChange}
+                                placeholder="Leave blank to keep current password"
+                                className="w-full bg-white/[0.05] border border-white/10 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 rounded-xl px-4 py-3 outline-none transition-all text-white placeholder-slate-600"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={updating}
+                            className="mt-4 w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white shadow-lg shadow-amber-500/25 rounded-xl font-semibold transition-all disabled:opacity-50"
+                        >
+                            {updating ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );
 }
-
-const styles = {
-    page: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f1f5f9', padding: '2rem' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' },
-    heading: { fontSize: '24px', fontWeight: '600', margin: 0 },
-    backBtn: { padding: '8px 16px', backgroundColor: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-    card: { backgroundColor: '#1e293b', padding: '2rem', borderRadius: '12px', border: '1px solid #334155', maxWidth: '500px', margin: '0 auto' },
-    form: { display: 'flex', flexDirection: 'column', gap: '1.5rem' },
-    formGroup: { display: 'flex', flexDirection: 'column', gap: '0.5rem' },
-    label: { fontSize: '14px', color: '#94a3b8' },
-    input: { padding: '10px', borderRadius: '8px', border: '1px solid #475569', backgroundColor: '#0f172a', color: '#f1f5f9' },
-    submitBtn: { padding: '12px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', marginTop: '1rem' },
-    error: { color: '#f87171', backgroundColor: '#450a0a', padding: '10px', borderRadius: '8px', marginBottom: '1rem', fontSize: '14px' },
-    success: { color: '#34d399', backgroundColor: '#064e3b', padding: '10px', borderRadius: '8px', marginBottom: '1rem', fontSize: '14px' }
-};

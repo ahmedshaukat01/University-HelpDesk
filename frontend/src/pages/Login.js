@@ -3,22 +3,18 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
- 
 export default function Login() {
     const navigate = useNavigate();
- 
+
     const [error, setError]     = useState('');
     const [loading, setLoading] = useState(false);
-    const [focused, setFocused] = useState(null);
-    const [hover, setHover]     = useState(false);
- 
-    const [form, setForm] = useState({ email: '', password: '' });
- 
+    const [form, setForm]       = useState({ email: '', password: '' });
+
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
         setError('');
     };
- 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -28,81 +24,98 @@ export default function Login() {
                 email:    form.email,
                 password: form.password
             }, { withCredentials: true });
- 
+
             const { role } = res.data;
             if (role === 'Student')     navigate('/student/dashboard');
             else if (role === 'Staff')  navigate('/staff/dashboard');
- 
+
         } catch (err) {
             setError(err.response?.data?.error || 'Something went wrong.');
         } finally {
             setLoading(false);
         }
     };
- 
+
     return (
-        <div style={styles.page}>
-            <div style={styles.card}>
-                <h2 style={styles.title}>Welcome back</h2>
-                <p style={styles.subtitle}>Student & Staff login</p>
- 
-                {error && <p style={styles.error}>{error}</p>}
- 
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <div style={styles.field}>
-                        <label style={styles.label}>Email</label>
-                        <input
-                            style={{ ...styles.input, ...(focused === 'email' ? styles.inputFocus : {}) }}
-                            name="email" type="email" placeholder="ali@university.edu"
-                            value={form.email} onChange={handleChange}
-                            onFocus={() => setFocused('email')} onBlur={() => setFocused(null)} required
-                        />
+        <div className="min-h-screen bg-sr-dark flex items-center justify-center p-4">
+            {/* Background glow */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl" />
+            </div>
+
+            <div className="relative w-full max-w-md">
+                {/* Back to home */}
+                <button
+                    onClick={() => navigate('/')}
+                    className="flex items-center gap-2 text-slate-500 hover:text-slate-300 text-sm mb-6 transition-colors"
+                >
+                    ← Back to Home
+                </button>
+
+                <div className="bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl rounded-2xl p-8 shadow-2xl">
+                    <div className="flex items-center gap-3 mb-6">
+                        <span className="text-2xl">🏛️</span>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white leading-tight">Welcome back</h2>
+                            <p className="text-sm text-slate-400">Student &amp; Staff login</p>
+                        </div>
                     </div>
- 
-                    <div style={styles.field}>
-                        <label style={styles.label}>Password</label>
-                        <input
-                            style={{ ...styles.input, ...(focused === 'password' ? styles.inputFocus : {}) }}
-                            name="password" type="password" placeholder="Enter your password"
-                            value={form.password} onChange={handleChange}
-                            onFocus={() => setFocused('password')} onBlur={() => setFocused(null)} required
-                        />
+
+                    {error && (
+                        <p className="text-red-400 text-sm mb-4 bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+                            {error}
+                        </p>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold text-slate-300">Email</label>
+                            <input
+                                id="login-email"
+                                className="w-full bg-white/[0.05] border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 outline-none transition-all text-white placeholder-slate-600"
+                                name="email" type="email" placeholder="ali@university.edu"
+                                value={form.email} onChange={handleChange}
+                                required
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold text-slate-300">Password</label>
+                            <input
+                                id="login-password"
+                                className="w-full bg-white/[0.05] border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-3 outline-none transition-all text-white placeholder-slate-600"
+                                name="password" type="password" placeholder="Enter your password"
+                                value={form.password} onChange={handleChange}
+                                required
+                            />
+                        </div>
+
+                        <button
+                            id="login-submit-btn"
+                            type="submit"
+                            className="mt-2 w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:opacity-90 text-white shadow-lg shadow-violet-500/25 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50"
+                            disabled={loading}
+                        >
+                            {loading ? 'Logging in...' : 'Login →'}
+                        </button>
+                    </form>
+
+                    <div className="mt-6 flex flex-col items-center gap-2 text-sm text-slate-500">
+                        <p>
+                            Don't have an account?{' '}
+                            <Link to="/register" className="text-violet-400 hover:text-violet-300 font-semibold transition-colors">
+                                Register
+                            </Link>
+                        </p>
+                        <p>
+                            Admin?{' '}
+                            <Link to="/admin/login" className="text-amber-400 hover:text-amber-300 font-semibold transition-colors">
+                                Admin login
+                            </Link>
+                        </p>
                     </div>
- 
-                    <button
-                        type="submit"
-                        style={{ ...styles.button, ...(hover ? styles.buttonHover : {}), opacity: loading ? 0.7 : 1 }}
-                        onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-                        disabled={loading}
-                    >
-                        {loading ? 'Logging in...' : 'Login'}
-                    </button>
-                </form>
- 
-                <p style={styles.footer}>
-                    Don't have an account? <Link to="/register" style={styles.link}>Register</Link>
-                </p>
-                <p style={styles.footer}>
-                    Admin? <Link to="/admin/login" style={styles.link}>Admin login</Link>
-                </p>
+                </div>
             </div>
         </div>
     );
 }
- 
-const styles = {
-    page:        { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f172a, #1e293b)' },
-    card:        { backgroundColor: '#0f172a', padding: '2.2rem', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 30px rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.05)' },
-    title:       { margin: '0 0 6px', fontSize: '24px', fontWeight: '600', color: '#f8fafc' },
-    subtitle:    { margin: '0 0 1.8rem', color: '#94a3b8', fontSize: '14px' },
-    form:        { display: 'flex', flexDirection: 'column', gap: '1.1rem' },
-    field:       { display: 'flex', flexDirection: 'column', gap: '6px' },
-    label:       { fontSize: '13px', fontWeight: '500', color: '#cbd5f5' },
-    input:       { padding: '11px 12px', borderRadius: '10px', border: '1px solid #334155', fontSize: '14px', backgroundColor: '#020617', color: '#f1f5f9', outline: 'none', transition: '0.2s ease' },
-    inputFocus:  { border: '1px solid #6366f1', boxShadow: '0 0 0 2px rgba(99,102,241,0.25)' },
-    button:      { padding: '12px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginTop: '6px', transition: '0.2s ease', boxShadow: '0 6px 18px rgba(99,102,241,0.35)' },
-    buttonHover: { transform: 'translateY(-1px)', boxShadow: '0 10px 22px rgba(139,92,246,0.45)' },
-    error:       { color: '#f87171', fontSize: '13px', marginBottom: '6px' },
-    footer:      { textAlign: 'center', fontSize: '13px', marginTop: '1rem', color: '#94a3b8' },
-    link:        { color: '#818cf8', textDecoration: 'none', fontWeight: '500' }
-};

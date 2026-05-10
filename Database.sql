@@ -49,6 +49,7 @@ CREATE TABLE Students
     FOREIGN KEY (department_id) REFERENCES Departments(department_id)
 );
 
+
 CREATE TABLE ComplaintCategories
 (
     category_id INT IDENTITY(1,1) PRIMARY KEY,
@@ -228,7 +229,8 @@ BEGIN
 END;
 GO
 
--- Assigns a complaint to a staff member
+-- Option 2: Transaction for Assigning Complaint to Staff
+-- Ensures that the complaint update, history log, and staff notification all succeed or fail together.
 CREATE OR ALTER PROCEDURE AssignComplaintToStaff
     @ComplaintId INT,
     @StaffId     INT,
@@ -237,6 +239,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- 1. Update the complaint details and status
         UPDATE Complaints
         SET assigned_to_staff_id = @StaffId,
             assigned_by_admin_id = @AdminId,
@@ -244,22 +249,35 @@ BEGIN
             status               = 'In-Progress'
         WHERE complaint_id = @ComplaintId;
 
+        -- 2. Log the assignment in History
         INSERT INTO History (complaint_id, changed_by_admin_id, action_type, remarks)
         VALUES (@ComplaintId, @AdminId, 'Assignment', 'Complaint assigned to staff');
 
+        -- 3. Notify the staff member
         DECLARE @Msg VARCHAR(MAX);
-        SELECT @Msg = 'New task assigned: ' + title FROM Complaints WHERE complaint_id = @ComplaintId;
+        DECLARE @Title VARCHAR(200);
+        DECLARE @StudentId INT;
+        SELECT @Msg = 'New task assigned: ' + title, @Title = title, @StudentId = student_id FROM Complaints WHERE complaint_id = @ComplaintId;
         
         INSERT INTO Notifications (complaint_id, staff_id, notification_type, message)
         VALUES (@ComplaintId, @StaffId, 'Assigned', @Msg);
+
+        -- 4. Notify the student that their complaint has been assigned
+        INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+        VALUES (@ComplaintId, @StudentId, 'Assigned', 'Your complaint "' + @Title + '" has been assigned to a staff member for resolution.');
+
+        COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         THROW;
     END CATCH
 END;
 GO
 
--- Updates complaint status and handles cascading for major incidents
+-- Option 3: Transaction for Status Update with Cascading (Major Incident)
+-- Handles complex cascading updates where resolving a Major (STAR) incident resolves all linked child complaints.
+-- Ensures that parent and child records are updated atomically to prevent inconsistent states.
 CREATE OR ALTER PROCEDURE UpdateComplaintStatus
     @ComplaintId  INT,
     @NewStatus    VARCHAR(20),
@@ -286,30 +304,79 @@ BEGIN
             RETURN;
         END
 
+        BEGIN TRANSACTION;
+
         DECLARE @OldStatus VARCHAR(20);
         SELECT @OldStatus = status FROM Complaints WHERE complaint_id = @ComplaintId;
 
+        -- 1. Update the main complaint status
         UPDATE Complaints SET status = @NewStatus WHERE complaint_id = @ComplaintId;
 
+        -- 2. Log history for the main complaint
         INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
         VALUES (@ComplaintId, @AdminId, 'StatusChange', @OldStatus, @NewStatus, 'Status changed from ' + @OldStatus + ' to ' + @NewStatus);
 
+        -- 3. Notify the student about the status update
+        DECLARE @MainStudentId INT;
+        DECLARE @MainTitle VARCHAR(200);
+        SELECT @MainStudentId = student_id, @MainTitle = title FROM Complaints WHERE complaint_id = @ComplaintId;
+
+        INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+        VALUES (@ComplaintId, @MainStudentId, 'StatusUpdate', 'The status of your complaint "' + @MainTitle + '" has been updated to ' + @NewStatus);
+
+        -- 4. If resolving a Major Incident, cascade the status to all linked child complaints
         IF @NewStatus IN ('Resolved', 'Rejected')
         BEGIN
+            -- FORWARD CASCADING: If this IS a parent, resolve all its children
             UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ComplaintId;
+            
             INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
             SELECT complaint_id, @AdminId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Automatically resolved via STAR Incident #' + CAST(@ComplaintId AS VARCHAR(10))
             FROM Complaints WHERE parent_complaint_id = @ComplaintId;
             
             INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-            SELECT c.complaint_id, c.student_id, 'StatusUpdate', 'Your complaint was resolved via Major Incident #' + CAST(@ComplaintId AS VARCHAR(10))
+            SELECT c.complaint_id, c.student_id, 'StatusUpdate', 'Your complaint "' + c.title + '" was resolved via Major Incident #' + CAST(@ComplaintId AS VARCHAR(10))
             FROM Complaints c WHERE c.parent_complaint_id = @ComplaintId;
+
+            -- UPWARD CASCADING: If this is a CHILD, resolve the parent
+            DECLARE @ParentId INT;
+            SELECT @ParentId = parent_complaint_id FROM Complaints WHERE complaint_id = @ComplaintId;
+            
+            IF @ParentId IS NOT NULL
+            BEGIN
+                -- Update parent status
+                UPDATE Complaints SET status = @NewStatus WHERE complaint_id = @ParentId;
+                
+                -- Log history for parent
+                INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
+                VALUES (@ParentId, @AdminId, 'StatusChange', 'In-Progress', @NewStatus, 'Parent resolved via resolution of clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
+                
+                -- Notify student of parent complaint
+                DECLARE @ParentStudentId INT;
+                SELECT @ParentStudentId = student_id FROM Complaints WHERE complaint_id = @ParentId;
+                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+                VALUES (@ParentId, @ParentStudentId, 'StatusUpdate', 'The Major Incident was resolved via clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
+
+                -- Resolve ALL OTHER children of this same parent
+                UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
+                
+                INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
+                SELECT complaint_id, @AdminId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Resolved via parent resolution (from sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ')'
+                FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
+
+                -- Notify students of all other siblings
+                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+                SELECT complaint_id, student_id, 'StatusUpdate', 'Your complaint was resolved via parent resolution (sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ' resolved the issue)'
+                FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
+            END
         END
 
+        COMMIT TRANSACTION;
         SET @ResultCode    = 0;
         SET @ResultMessage = 'Status updated successfully.';
     END TRY
     BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         SET @ResultCode    = 3;
         SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
     END CATCH
@@ -762,7 +829,6 @@ BEGIN
 END;
 GO
 
--- Updates status of a complaint by assigned staff
 CREATE OR ALTER PROCEDURE UpdateStaffComplaintStatus
     @ComplaintId  INT,
     @NewStatus    VARCHAR(20),
@@ -775,26 +841,88 @@ BEGIN
     SET @ResultCode    = 0;
     SET @ResultMessage = '';
     BEGIN TRY
-        IF @NewStatus NOT IN ('Pending', 'In-Progress', 'Resolved', 'Rejected', 'Reopened','Reopen-Requested')
+        IF @NewStatus NOT IN ('Pending', 'In-Progress', 'Resolved', 'Rejected', 'Reopened', 'Reopen-Requested')
         BEGIN
             SET @ResultCode = 1; SET @ResultMessage = 'Invalid status value.'; RETURN;
         END
+
         IF NOT EXISTS (SELECT 1 FROM Complaints WHERE complaint_id = @ComplaintId AND assigned_to_staff_id = @StaffId)
         BEGIN
             SET @ResultCode = 3; SET @ResultMessage = 'Unauthorized or complaint not found.'; RETURN;
         END
 
+        BEGIN TRANSACTION;
+
         DECLARE @OldStatus VARCHAR(20);
         SELECT @OldStatus = status FROM Complaints WHERE complaint_id = @ComplaintId;
 
+        -- 1. Update the main complaint status
         UPDATE Complaints SET status = @NewStatus WHERE complaint_id = @ComplaintId;
 
+        -- 2. Log history for the main complaint
         INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
         VALUES (@ComplaintId, @StaffId, 'StatusChange', @OldStatus, @NewStatus, 'Status changed from ' + @OldStatus + ' to ' + @NewStatus);
 
+        -- 3. Notify the student about the status update
+        DECLARE @SStudentId INT;
+        DECLARE @STitle VARCHAR(200);
+        SELECT @SStudentId = student_id, @STitle = title FROM Complaints WHERE complaint_id = @ComplaintId;
+
+        INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+        VALUES (@ComplaintId, @SStudentId, 'StatusUpdate', 'The status of your complaint "' + @STitle + '" has been updated to ' + @NewStatus);
+
+        -- 4. If resolving a Major Incident, cascade the status to all linked child complaints
+        IF @NewStatus IN ('Resolved', 'Rejected')
+        BEGIN
+            -- FORWARD CASCADING: If this IS a parent, resolve all its children
+            UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ComplaintId;
+            
+            INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
+            SELECT complaint_id, @StaffId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Automatically resolved via STAR Incident #' + CAST(@ComplaintId AS VARCHAR(10))
+            FROM Complaints WHERE parent_complaint_id = @ComplaintId;
+            
+            INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+            SELECT c.complaint_id, c.student_id, 'StatusUpdate', 'Your complaint "' + c.title + '" was resolved via Major Incident #' + CAST(@ComplaintId AS VARCHAR(10))
+            FROM Complaints c WHERE c.parent_complaint_id = @ComplaintId;
+
+            -- UPWARD CASCADING: If this is a CHILD, resolve the parent (which will trigger history/notif logic if needed)
+            DECLARE @ParentId INT;
+            SELECT @ParentId = parent_complaint_id FROM Complaints WHERE complaint_id = @ComplaintId;
+            
+            IF @ParentId IS NOT NULL
+            BEGIN
+                -- Update parent status
+                UPDATE Complaints SET status = @NewStatus WHERE complaint_id = @ParentId;
+                
+                -- Log history for parent
+                INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
+                VALUES (@ParentId, @StaffId, 'StatusChange', 'In-Progress', @NewStatus, 'Parent resolved via resolution of clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
+                
+                -- Notify student of parent complaint
+                DECLARE @PStudentId INT;
+                SELECT @PStudentId = student_id FROM Complaints WHERE complaint_id = @ParentId;
+                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+                VALUES (@ParentId, @PStudentId, 'StatusUpdate', 'The Major Incident was resolved via clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
+
+                -- Resolve ALL OTHER children of this same parent
+                UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
+                
+                INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
+                SELECT complaint_id, @StaffId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Resolved via parent resolution (from sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ')'
+                FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
+
+                -- Notify students of all other siblings
+                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+                SELECT complaint_id, student_id, 'StatusUpdate', 'Your complaint was resolved via parent resolution (sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ' resolved the issue)'
+                FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
+            END
+        END
+
+        COMMIT TRANSACTION;
         SET @ResultCode = 0; SET @ResultMessage = 'Status updated successfully.';
     END TRY
     BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         SET @ResultCode = 4; SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
     END CATCH
 END;
@@ -980,7 +1108,8 @@ BEGIN
 END;
 GO
 
--- Submits a new complaint from a student
+-- Option 1: Transaction for Complaint Submission
+-- Ensures that every new complaint is atomically recorded with its corresponding history entry.
 CREATE OR ALTER PROCEDURE SubmitComplaint
     @StudentId    INT,
     @DepartmentId INT,
@@ -996,14 +1125,28 @@ BEGIN
     SET NOCOUNT ON;
     SET @ResultCode = 0; SET @ResultMessage = ''; SET @NewComplaintId = NULL;
     BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- 1. Create the complaint
         INSERT INTO Complaints (student_id, department_id, category_id, title, description, priority, status, submission_date)
         VALUES (@StudentId, @DepartmentId, @CategoryId, @Title, @Description, @Priority, 'Pending', GETDATE());
+        
         SET @NewComplaintId = SCOPE_IDENTITY();
+
+        -- 2. Log the initial submission in history
         INSERT INTO History (complaint_id, changed_by_student_id, action_type, remarks)
         VALUES (@NewComplaintId, @StudentId, 'StatusChange', 'Complaint submitted');
+
+        -- 3. Notify all admins about the new complaint
+        INSERT INTO Notifications (complaint_id, admin_id, notification_type, message)
+        SELECT @NewComplaintId, admin_id, 'Submitted', 'New complaint submitted: ' + @Title
+        FROM Admins;
+
+        COMMIT TRANSACTION;
         SET @ResultCode = 0; SET @ResultMessage = 'Complaint submitted successfully.';
     END TRY
     BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         SET @ResultCode = 2; SET @ResultMessage = 'Error: ' + ERROR_MESSAGE();
     END CATCH
 END;
@@ -1100,7 +1243,7 @@ GO
 CREATE OR ALTER PROCEDURE UpdateStudentProfile
     @StudentId    INT,
     @Name         VARCHAR(100),
-    @PhoneNumber  VARCHAR(15),
+    @PhoneNumber  VARCHAR(20),
     @PasswordHash VARCHAR(255) = NULL
 AS
 BEGIN
