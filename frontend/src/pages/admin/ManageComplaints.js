@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from '../../components/Navbar';
 import { Landmark, ClipboardList, BarChart, Settings, PlusCircle, Star, Zap, Clock, Users, Building, Wrench, XCircle, CheckCircle } from '../../components/Icons';
 
 const PRIORITY_COLORS = {
@@ -212,37 +213,8 @@ export default function ManageComplaints() {
   };
 
   return (
-    <div className="min-h-screen bg-sr-dark">
-      {/* Navbar */}
-      <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
-                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-white" onClick={async () => {
-                      await axios.post('/api/logout', {}, { withCredentials: true });
-                      navigate('/');
-                  }}>
-                      <Landmark size={24} />
-                      <span className="text-lg font-bold tracking-tight">Smart<span className="text-amber-400">Resolve</span> Admin</span>
-                  </div>
-                  <div className="hidden md:flex gap-2">
-                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/dashboard')}>Dashboard</button>
-                    <button className="px-4 py-2 rounded-lg text-sm font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 shadow-sm transition-colors">Manage Complaints</button>
-                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/reports')}>Reports</button>
-                  </div>
-                  <div className="flex items-center gap-4">
-                      <span className="px-3 py-1 bg-amber-500/10 text-amber-400 text-sm font-medium rounded-full border border-amber-500/20">
-                          Admin
-                      </span>
-                      <button 
-                          onClick={handleLogout}
-                          className="text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                          Logout
-                      </button>
-                  </div>
-              </div>
-          </div>
-      </nav>
+        <div className="min-h-screen bg-sr-dark">
+            <Navbar role="Admin" />
 
       {/* Main Content */}
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">

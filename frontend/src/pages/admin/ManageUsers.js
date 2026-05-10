@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from '../../components/Navbar';
 
 export default function ManageUsers() {
     const navigate = useNavigate();
@@ -89,19 +90,12 @@ export default function ManageUsers() {
     const inputClass = "w-full bg-white/[0.05] border border-white/10 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 rounded-xl px-4 py-2.5 outline-none transition-all text-white placeholder-slate-500";
 
     return (
-        <div className="min-h-screen bg-sr-dark p-4 sm:p-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                    <div>
-                        <h2 className="text-3xl font-bold text-white mb-1">Manage Users</h2>
-                        <p className="text-slate-400">View and manage system users</p>
-                    </div>
-                    <button 
-                        className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl text-sm font-medium transition-colors"
-                        onClick={() => navigate('/admin/dashboard')}
-                    >
-                        ← Dashboard
-                    </button>
+        <div className="min-h-screen bg-sr-dark">
+            <Navbar role="Admin" />
+            <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+                <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-white mb-1">Manage Users</h2>
+                    <p className="text-slate-400">View and manage system users</p>
                 </div>
 
                 {error && <p className="text-red-400 text-sm mb-6 bg-red-500/10 p-4 rounded-xl border border-red-500/20">{error}</p>}

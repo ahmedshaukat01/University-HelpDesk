@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from '../../components/Navbar';
 import { Landmark, ClipboardList, Clock, Users, Building, Mail, CheckCircle, XCircle } from '../../components/Icons';
 
 const PRIORITY_COLORS = {
@@ -44,11 +45,6 @@ export default function StaffComplaints() {
 
   useEffect(() => { fetchComplaints(); }, [fetchComplaints]);
 
-  const handleLogout = async () => {
-    await axios.post('/api/logout', {}, { withCredentials: true });
-    navigate('/login');
-  };
-
   const [updatingId, setUpdatingId] = useState(null);
   const [updateMsg, setUpdateMsg] = useState({});
 
@@ -83,30 +79,9 @@ export default function StaffComplaints() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-sr-dark">
-      {/* Navbar */}
-      <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
-                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={async () => {
-                      await axios.post('/api/logout', {}, { withCredentials: true });
-                      navigate('/');
-                  }}>
-                      <span className="text-xl">🏛️</span>
-                      <span className="text-lg font-bold text-white tracking-tight">Smart<span className="text-emerald-400">Resolve</span></span>
-                  </div>
-                  <div className="hidden md:flex gap-2">
-                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/staff/dashboard')}>Dashboard</button>
-                    <button className="px-4 py-2 rounded-lg text-sm font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">Assigned Complaints</button>
-                  </div>
-                  <div className="flex items-center gap-4">
-                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-300 text-sm font-medium rounded-full border border-emerald-500/20">Staff</span>
-                      <button onClick={handleLogout} className="text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors">Logout</button>
-                  </div>
-              </div>
-          </div>
-      </nav>
+    return (
+        <div className="min-h-screen bg-sr-dark">
+            <Navbar role="Staff" />
 
       {/* Main Content */}
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">

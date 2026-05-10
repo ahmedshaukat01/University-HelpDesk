@@ -1279,3 +1279,5 @@ INSERT INTO ComplaintCategories (category_name, department_id) VALUES
 ('Server Downtime', 1),
 ('WiFi Connectivity', 1),
 ('Power Failure', 2);
+
+select* from Students

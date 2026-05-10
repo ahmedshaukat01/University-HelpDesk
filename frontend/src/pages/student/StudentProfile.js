@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from '../../components/Navbar';
 
 export default function StudentProfile() {
     const navigate = useNavigate();
@@ -56,27 +57,7 @@ export default function StudentProfile() {
 
     return (
         <div className="min-h-screen bg-sr-dark">
-            {/* Navbar */}
-            <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={async () => {
-                            await axios.post('/api/logout', {}, { withCredentials: true });
-                            navigate('/');
-                        }}>
-                            <span className="text-xl">🏛️</span>
-                            <span className="text-lg font-bold text-white tracking-tight">Smart<span className="text-violet-400">Resolve</span></span>
-                        </div>
-                        <button
-                            id="profile-back-btn"
-                            className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl text-sm font-medium transition-colors"
-                            onClick={() => navigate('/student/dashboard')}
-                        >
-                            ← Dashboard
-                        </button>
-                    </div>
-                </div>
-            </nav>
+            <Navbar role="Student" />
 
             <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 <div className="bg-white/[0.03] border border-violet-500/20 rounded-3xl p-8 sm:p-10">

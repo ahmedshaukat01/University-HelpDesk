@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Landmark } from '../../components/Icons';
+import Navbar from '../../components/Navbar';
 
 export default function AdminReports() {
-  const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,35 +24,10 @@ export default function AdminReports() {
     }
   };
 
-  const handleLogout = async () => {
-    await axios.post('/api/logout', {}, { withCredentials: true });
-    navigate('/admin/login');
-  };
 
-  return (
-    <div className="min-h-screen bg-sr-dark">
-      <nav className="bg-white/[0.03] backdrop-blur-md border-b border-white/[0.06] sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
-                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={async () => {
-                      await axios.post('/api/logout', {}, { withCredentials: true });
-                      navigate('/');
-                  }}>
-                      <span className="text-xl">🏛️</span>
-                      <span className="text-lg font-bold text-white tracking-tight">Smart<span className="text-amber-400">Resolve</span></span>
-                  </div>
-                  <div className="hidden md:flex gap-2">
-                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/dashboard')}>Dashboard</button>
-                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-white/10 transition-colors" onClick={() => navigate('/admin/complaints')}>Complaints</button>
-                    <button className="px-4 py-2 rounded-lg text-sm font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20">Reports</button>
-                  </div>
-                  <div className="flex items-center gap-4">
-                      <span className="px-3 py-1 bg-amber-500/10 text-amber-300 text-sm font-medium rounded-full border border-amber-500/20">Admin</span>
-                      <button onClick={handleLogout} className="text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors">Logout</button>
-                  </div>
-              </div>
-          </div>
-      </nav>
+    return (
+        <div className="min-h-screen bg-sr-dark">
+            <Navbar role="Admin" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">

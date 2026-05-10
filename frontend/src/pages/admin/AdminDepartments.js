@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '../../components/Navbar';
 
 export default function AdminDepartments() {
     const navigate = useNavigate();
@@ -49,20 +50,12 @@ export default function AdminDepartments() {
     );
 
     return (
-        <div className="min-h-screen bg-sr-dark p-4 sm:p-8">
-            <div className="max-w-5xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Manage Departments</h1>
-                        <p className="text-slate-400 text-sm">View and edit department names.</p>
-                    </div>
-                    <button
-                        id="dept-back-btn"
-                        className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl font-medium transition-colors"
-                        onClick={() => navigate('/admin/dashboard')}
-                    >
-                        ← Back to Dashboard
-                    </button>
+        <div className="min-h-screen bg-sr-dark">
+            <Navbar role="Admin" />
+            <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-white mb-1">Manage Departments</h1>
+                    <p className="text-slate-400 text-sm">View and edit department names.</p>
                 </div>
 
                 {error && <p className="text-red-400 text-sm mb-6 bg-red-500/10 border border-red-500/20 p-4 rounded-xl">{error}</p>}

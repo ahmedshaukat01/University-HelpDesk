@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from '../../components/Navbar';
 
 export default function StaffProfile() {
     const navigate = useNavigate();
@@ -55,20 +56,12 @@ export default function StaffProfile() {
     const inputClass = "w-full bg-white/[0.05] border border-white/10 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl px-4 py-3 outline-none transition-all text-white placeholder-slate-600";
 
     return (
-        <div className="min-h-screen bg-sr-dark p-4 sm:p-8">
-            <div className="max-w-2xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Manage Profile</h1>
-                        <p className="text-slate-400 text-sm">Update your staff account details.</p>
-                    </div>
-                    <button
-                        id="profile-back-btn"
-                        className="flex items-center gap-2 px-4 py-2 bg-white/[0.05] hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl font-medium transition-colors"
-                        onClick={() => navigate('/staff/dashboard')}
-                    >
-                        ← Dashboard
-                    </button>
+        <div className="min-h-screen bg-sr-dark">
+            <Navbar role="Staff" />
+            <div className="max-w-2xl mx-auto py-10 px-4 sm:px-6">
+                <div className="mb-8 text-center sm:text-left">
+                    <h1 className="text-3xl font-bold text-white mb-1">Manage Profile</h1>
+                    <p className="text-slate-400 text-sm">Update your staff account details.</p>
                 </div>
 
                 <div className="bg-white/[0.03] border border-emerald-500/20 rounded-2xl p-8">
