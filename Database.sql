@@ -229,7 +229,7 @@ BEGIN
 END;
 GO
 
--- Option 2: Transaction for Assigning Complaint to Staff
+-- Transaction for Assigning Complaint to Staff
 -- Ensures that the complaint update, history log, and staff notification all succeed or fail together.
 CREATE OR ALTER PROCEDURE AssignComplaintToStaff
     @ComplaintId INT,
@@ -252,19 +252,7 @@ BEGIN
         -- 2. Log the assignment in History
         INSERT INTO History (complaint_id, changed_by_admin_id, action_type, remarks)
         VALUES (@ComplaintId, @AdminId, 'Assignment', 'Complaint assigned to staff');
-
-        -- 3. Notify the staff member
-        DECLARE @Msg VARCHAR(MAX);
-        DECLARE @Title VARCHAR(200);
-        DECLARE @StudentId INT;
-        SELECT @Msg = 'New task assigned: ' + title, @Title = title, @StudentId = student_id FROM Complaints WHERE complaint_id = @ComplaintId;
-        
-        INSERT INTO Notifications (complaint_id, staff_id, notification_type, message)
-        VALUES (@ComplaintId, @StaffId, 'Assigned', @Msg);
-
-        -- 4. Notify the student that their complaint has been assigned
-        INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-        VALUES (@ComplaintId, @StudentId, 'Assigned', 'Your complaint "' + @Title + '" has been assigned to a staff member for resolution.');
+        -- Notifications are now handled automatically by trg_NotifyStaffOnAssignment trigger.
 
         COMMIT TRANSACTION;
     END TRY
@@ -275,7 +263,7 @@ BEGIN
 END;
 GO
 
--- Option 3: Transaction for Status Update with Cascading (Major Incident)
+-- Transaction for Status Update with Cascading (Major Incident)
 -- Handles complex cascading updates where resolving a Major (STAR) incident resolves all linked child complaints.
 -- Ensures that parent and child records are updated atomically to prevent inconsistent states.
 CREATE OR ALTER PROCEDURE UpdateComplaintStatus
@@ -316,57 +304,33 @@ BEGIN
         INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
         VALUES (@ComplaintId, @AdminId, 'StatusChange', @OldStatus, @NewStatus, 'Status changed from ' + @OldStatus + ' to ' + @NewStatus);
 
-        -- 3. Notify the student about the status update
-        DECLARE @MainStudentId INT;
-        DECLARE @MainTitle VARCHAR(200);
-        SELECT @MainStudentId = student_id, @MainTitle = title FROM Complaints WHERE complaint_id = @ComplaintId;
-
-        INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-        VALUES (@ComplaintId, @MainStudentId, 'StatusUpdate', 'The status of your complaint "' + @MainTitle + '" has been updated to ' + @NewStatus);
+        -- 3. Notifications handled by trg_NotifyStudentOnStatusChange trigger.
 
         -- 4. If resolving a Major Incident, cascade the status to all linked child complaints
         IF @NewStatus IN ('Resolved', 'Rejected')
         BEGIN
-            -- FORWARD CASCADING: If this IS a parent, resolve all its children
+            -- If this IS a parent, resolve all its children
             UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ComplaintId;
             
             INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
             SELECT complaint_id, @AdminId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Automatically resolved via STAR Incident #' + CAST(@ComplaintId AS VARCHAR(10))
             FROM Complaints WHERE parent_complaint_id = @ComplaintId;
-            
-            INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-            SELECT c.complaint_id, c.student_id, 'StatusUpdate', 'Your complaint "' + c.title + '" was resolved via Major Incident #' + CAST(@ComplaintId AS VARCHAR(10))
-            FROM Complaints c WHERE c.parent_complaint_id = @ComplaintId;
 
-            -- UPWARD CASCADING: If this is a CHILD, resolve the parent
+            -- If this is a CHILD, resolve the parent
             DECLARE @ParentId INT;
             SELECT @ParentId = parent_complaint_id FROM Complaints WHERE complaint_id = @ComplaintId;
             
             IF @ParentId IS NOT NULL
             BEGIN
-                -- Update parent status
                 UPDATE Complaints SET status = @NewStatus WHERE complaint_id = @ParentId;
                 
-                -- Log history for parent
                 INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
                 VALUES (@ParentId, @AdminId, 'StatusChange', 'In-Progress', @NewStatus, 'Parent resolved via resolution of clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
-                
-                -- Notify student of parent complaint
-                DECLARE @ParentStudentId INT;
-                SELECT @ParentStudentId = student_id FROM Complaints WHERE complaint_id = @ParentId;
-                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-                VALUES (@ParentId, @ParentStudentId, 'StatusUpdate', 'The Major Incident was resolved via clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
 
-                -- Resolve ALL OTHER children of this same parent
                 UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
                 
                 INSERT INTO History (complaint_id, changed_by_admin_id, action_type, old_status, new_status, remarks)
                 SELECT complaint_id, @AdminId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Resolved via parent resolution (from sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ')'
-                FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
-
-                -- Notify students of all other siblings
-                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-                SELECT complaint_id, student_id, 'StatusUpdate', 'Your complaint was resolved via parent resolution (sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ' resolved the issue)'
                 FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
             END
         END
@@ -863,57 +827,31 @@ BEGIN
         INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
         VALUES (@ComplaintId, @StaffId, 'StatusChange', @OldStatus, @NewStatus, 'Status changed from ' + @OldStatus + ' to ' + @NewStatus);
 
-        -- 3. Notify the student about the status update
-        DECLARE @SStudentId INT;
-        DECLARE @STitle VARCHAR(200);
-        SELECT @SStudentId = student_id, @STitle = title FROM Complaints WHERE complaint_id = @ComplaintId;
-
-        INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-        VALUES (@ComplaintId, @SStudentId, 'StatusUpdate', 'The status of your complaint "' + @STitle + '" has been updated to ' + @NewStatus);
+        -- 3. Notifications handled by trg_NotifyStudentOnStatusChange trigger.
 
         -- 4. If resolving a Major Incident, cascade the status to all linked child complaints
         IF @NewStatus IN ('Resolved', 'Rejected')
         BEGIN
-            -- FORWARD CASCADING: If this IS a parent, resolve all its children
             UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ComplaintId;
             
             INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
             SELECT complaint_id, @StaffId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Automatically resolved via STAR Incident #' + CAST(@ComplaintId AS VARCHAR(10))
             FROM Complaints WHERE parent_complaint_id = @ComplaintId;
-            
-            INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-            SELECT c.complaint_id, c.student_id, 'StatusUpdate', 'Your complaint "' + c.title + '" was resolved via Major Incident #' + CAST(@ComplaintId AS VARCHAR(10))
-            FROM Complaints c WHERE c.parent_complaint_id = @ComplaintId;
 
-            -- UPWARD CASCADING: If this is a CHILD, resolve the parent (which will trigger history/notif logic if needed)
             DECLARE @ParentId INT;
             SELECT @ParentId = parent_complaint_id FROM Complaints WHERE complaint_id = @ComplaintId;
             
             IF @ParentId IS NOT NULL
             BEGIN
-                -- Update parent status
                 UPDATE Complaints SET status = @NewStatus WHERE complaint_id = @ParentId;
                 
-                -- Log history for parent
                 INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
                 VALUES (@ParentId, @StaffId, 'StatusChange', 'In-Progress', @NewStatus, 'Parent resolved via resolution of clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
-                
-                -- Notify student of parent complaint
-                DECLARE @PStudentId INT;
-                SELECT @PStudentId = student_id FROM Complaints WHERE complaint_id = @ParentId;
-                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-                VALUES (@ParentId, @PStudentId, 'StatusUpdate', 'The Major Incident was resolved via clustered complaint #' + CAST(@ComplaintId AS VARCHAR(10)));
 
-                -- Resolve ALL OTHER children of this same parent
                 UPDATE Complaints SET status = @NewStatus WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
                 
                 INSERT INTO History (complaint_id, changed_by_staff_id, action_type, old_status, new_status, remarks)
                 SELECT complaint_id, @StaffId, 'CascadedStatusUpdate', 'In-Progress', @NewStatus, 'Resolved via parent resolution (from sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ')'
-                FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
-
-                -- Notify students of all other siblings
-                INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
-                SELECT complaint_id, student_id, 'StatusUpdate', 'Your complaint was resolved via parent resolution (sibling #' + CAST(@ComplaintId AS VARCHAR(10)) + ' resolved the issue)'
                 FROM Complaints WHERE parent_complaint_id = @ParentId AND complaint_id != @ComplaintId;
             END
         END
@@ -1108,7 +1046,7 @@ BEGIN
 END;
 GO
 
--- Option 1: Transaction for Complaint Submission
+-- Transaction for Complaint Submission
 -- Ensures that every new complaint is atomically recorded with its corresponding history entry.
 CREATE OR ALTER PROCEDURE SubmitComplaint
     @StudentId    INT,
@@ -1137,10 +1075,7 @@ BEGIN
         INSERT INTO History (complaint_id, changed_by_student_id, action_type, remarks)
         VALUES (@NewComplaintId, @StudentId, 'StatusChange', 'Complaint submitted');
 
-        -- 3. Notify all admins about the new complaint
-        INSERT INTO Notifications (complaint_id, admin_id, notification_type, message)
-        SELECT @NewComplaintId, admin_id, 'Submitted', 'New complaint submitted: ' + @Title
-        FROM Admins;
+        -- 3. Admin notifications on new complaints are handled by application logic.
 
         COMMIT TRANSACTION;
         SET @ResultCode = 0; SET @ResultMessage = 'Complaint submitted successfully.';
@@ -1279,5 +1214,170 @@ INSERT INTO ComplaintCategories (category_name, department_id) VALUES
 ('Server Downtime', 1),
 ('WiFi Connectivity', 1),
 ('Power Failure', 2);
+GO
 
-select* from Students
+-- =============================================
+-- VIEWS
+-- =============================================
+
+-- [ADMIN] v_AdminComplaintOverview
+-- Replaces the GetComplaintsForAdmin SP joins.
+-- Backend queries this view with dynamic WHERE clauses.
+CREATE VIEW v_AdminComplaintOverview AS
+SELECT
+    c.complaint_id,
+    c.title,
+    c.description,
+    c.status,
+    c.priority,
+    c.is_starred,
+    c.is_major_incident,
+    c.submission_date,
+    c.student_id,
+    c.department_id,
+    c.category_id,
+    c.assigned_to_staff_id AS staff_id,
+    c.parent_complaint_id,
+    s.name              AS student_name,
+    s.email             AS student_email,
+    d.department_name,
+    cat.category_name,
+    st.name             AS assigned_to_staff_name
+FROM Complaints c
+LEFT JOIN Students            s   ON c.student_id   = s.student_id
+LEFT JOIN Departments         d   ON c.department_id = d.department_id
+LEFT JOIN ComplaintCategories cat ON c.category_id  = cat.category_id
+LEFT JOIN Staff               st  ON c.assigned_to_staff_id = st.staff_id;
+GO
+
+-- [STUDENT] v_StudentComplaintStatus
+-- Gives each student a clean read of their own complaints
+-- with resolved names instead of foreign key IDs.
+-- Backend filters by student_id at query time.
+CREATE VIEW v_StudentComplaintStatus AS
+SELECT
+    c.complaint_id,
+    c.student_id,
+    c.title,
+    c.status,
+    c.priority,
+    c.submission_date,
+    d.department_name,
+    cat.category_name
+FROM Complaints c
+LEFT JOIN Departments         d   ON c.department_id = d.department_id
+LEFT JOIN ComplaintCategories cat ON c.category_id  = cat.category_id;
+GO
+
+-- [STAFF] v_StaffAssignedComplaints
+-- Gives each staff member a rich view of their assigned
+-- complaints including student contact info and deadlines.
+-- Backend filters by staff_id at query time.
+CREATE VIEW v_StaffAssignedComplaints AS
+SELECT
+    c.complaint_id,
+    c.assigned_to_staff_id AS staff_id,
+    c.title,
+    c.description,
+    c.status,
+    c.priority,
+    c.submission_date,
+    c.assignment_date,
+    c.deadline,
+    -- Flag a complaint as NEW if assigned within the last 24 hours
+    CASE WHEN DATEDIFF(HOUR, c.assignment_date, GETDATE()) < 24 THEN 1 ELSE 0 END AS is_new,
+    s.name              AS student_name,
+    s.email             AS student_email,
+    d.department_name,
+    cat.category_name
+FROM Complaints c
+JOIN Students             s   ON c.student_id   = s.student_id
+LEFT JOIN Departments     d   ON c.department_id = d.department_id
+LEFT JOIN ComplaintCategories cat ON c.category_id = cat.category_id
+WHERE c.assigned_to_staff_id IS NOT NULL;
+GO
+
+
+-- =============================================
+-- TRIGGERS
+-- =============================================
+
+-- [ADMIN] trg_AutoNotifyAdminOnReopen
+-- Fires after INSERT into the Complaints status = 'Reopen-Requested'.
+-- Automatically notifies ALL admins.
+CREATE TRIGGER trg_AutoNotifyAdminOnReopen
+ON Complaints
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(status)
+    BEGIN
+        INSERT INTO Notifications (complaint_id, admin_id, notification_type, message)
+        SELECT
+            i.complaint_id,
+            a.admin_id,
+            'ReopenRequest',
+            'Reopen request for Complaint #' + CAST(i.complaint_id AS VARCHAR(10))
+                + ' by student: ' + ISNULL(s.name, 'Unknown')
+        FROM inserted i
+        JOIN deleted  d ON i.complaint_id = d.complaint_id
+        JOIN Students s ON i.student_id   = s.student_id
+        CROSS JOIN Admins a
+        WHERE i.status = 'Reopen-Requested'
+          AND d.status <> 'Reopen-Requested';
+    END
+END;
+GO
+
+-- [STUDENT] trg_NotifyStudentOnStatusChange
+-- Fires whenever a complaint status changes.
+-- Automatically notifies the owning student.
+CREATE TRIGGER trg_NotifyStudentOnStatusChange
+ON Complaints
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(status)
+    BEGIN
+        INSERT INTO Notifications (complaint_id, student_id, notification_type, message)
+        SELECT
+            i.complaint_id,
+            i.student_id,
+            'StatusUpdate',
+            'Your complaint #' + CAST(i.complaint_id AS VARCHAR(10))
+                + ' status changed to: ' + i.status
+        FROM inserted i
+        JOIN deleted d ON i.complaint_id = d.complaint_id
+        WHERE i.status <> d.status
+          AND i.status <> 'Reopen-Requested'; -- exclude reopen requests (handled by admin trigger)
+    END
+END;
+GO
+
+-- [STAFF] trg_NotifyStaffOnAssignment
+-- Fires whenever a complaint is assigned to a staff member.
+-- Automatically notifies the assigned staff member.
+CREATE TRIGGER trg_NotifyStaffOnAssignment
+ON Complaints
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(assigned_to_staff_id)
+    BEGIN
+        INSERT INTO Notifications (complaint_id, staff_id, notification_type, message)
+        SELECT
+            i.complaint_id,
+            i.assigned_to_staff_id,
+            'Assigned',
+            'A complaint has been assigned to you: #'
+                + CAST(i.complaint_id AS VARCHAR(10)) + ' - ' + i.title
+        FROM inserted i
+        JOIN deleted d ON i.complaint_id = d.complaint_id
+        WHERE i.assigned_to_staff_id IS NOT NULL
+          AND (d.assigned_to_staff_id IS NULL OR i.assigned_to_staff_id <> d.assigned_to_staff_id);
+    END
+END;
+GO

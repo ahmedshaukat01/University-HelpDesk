@@ -16,14 +16,10 @@ const config = {
     },
 };
 
-// =============================================
-// CORE DATABASE EXECUTION
-// =============================================
-
 const executeQuery = (query, parameters = []) => {
     return new Promise((resolve, reject) => {
         const connection = new Connection(config);
-
+        
         connection.on('connect', (err) => {
             if (err) {
                 console.error('DB Connection Error:', err);
@@ -147,17 +143,37 @@ const adminLogin = async (email) => {
 };
 
 const getComplaintsForAdmin = async ({ filter = 'all', departmentId = null, priority = null } = {}) => {
-    const query = `
-        EXEC GetComplaintsForAdmin
-            @Filter       = @Filter,
-            @DepartmentId = @DepartmentId,
-            @Priority     = @Priority;
-    `;
-    const parameters = [
-        { name: 'Filter', type: TYPES.VarChar, value: filter, options: { length: 20 } },
-        { name: 'DepartmentId', type: TYPES.Int, value: departmentId ? parseInt(departmentId) : null },
-        { name: 'Priority', type: TYPES.VarChar, value: priority || null, options: { length: 10 } },
-    ];
+    // Build WHERE clause dynamically against the v_AdminComplaintOverview view.
+    // This replaces the GetComplaintsForAdmin stored procedure.
+    const conditions = [];
+    const parameters = [];
+
+    const normalised = (filter || 'all').toLowerCase();
+
+    if (normalised === 'unassigned') {
+        conditions.push('staff_id IS NULL');
+    } else if (normalised === 'assigned') {
+        conditions.push('staff_id IS NOT NULL');
+    }
+    // 'all' → no status filter; any other value → treat as explicit status match
+    if (normalised !== 'all' && normalised !== 'unassigned' && normalised !== 'assigned') {
+        conditions.push('status = @Filter');
+        parameters.push({ name: 'Filter', type: TYPES.VarChar, value: filter, options: { length: 20 } });
+    }
+
+    if (departmentId) {
+        conditions.push('department_id = @DepartmentId');
+        parameters.push({ name: 'DepartmentId', type: TYPES.Int, value: parseInt(departmentId) });
+    }
+
+    if (priority) {
+        conditions.push('priority = @Priority');
+        parameters.push({ name: 'Priority', type: TYPES.VarChar, value: priority, options: { length: 10 } });
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const query = `SELECT * FROM v_AdminComplaintOverview ${where} ORDER BY submission_date DESC`;
+
     return await executeQuery(query, parameters);
 };
 
@@ -403,15 +419,17 @@ const clusterComplaint = async (childId, parentId) => {
 // =============================================
 
 const getAssignedComplaintsForStaff = async (staffId, status = null) => {
-    const query = `
-        EXEC GetAssignedComplaintsForStaff
-            @StaffId = @StaffId,
-            @Status  = @Status;
-    `;
-    const parameters = [
-        { name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) },
-        { name: 'Status', type: TYPES.VarChar, value: status || null, options: { length: 20 } }
-    ];
+    // Queries v_StaffAssignedComplaints view — replaces GetAssignedComplaintsForStaff SP.
+    // The view pre-joins Students, Departments, Categories and computes is_new flag.
+    const conditions = ['staff_id = @StaffId'];
+    const parameters = [{ name: 'StaffId', type: TYPES.Int, value: parseInt(staffId) }];
+
+    if (status) {
+        conditions.push('status = @Status');
+        parameters.push({ name: 'Status', type: TYPES.VarChar, value: status, options: { length: 20 } });
+    }
+
+    const query = `SELECT * FROM v_StaffAssignedComplaints WHERE ${conditions.join(' AND ')} ORDER BY is_new DESC, submission_date DESC`;
     return await executeQuery(query, parameters);
 };
 
@@ -545,7 +563,9 @@ const submitComplaint = async (data) => {
 };
 
 const getStudentComplaints = async (studentId) => {
-    const query = `EXEC GetStudentComplaints @StudentId = @StudentId;`;
+    // Queries v_StudentComplaintStatus view — replaces GetStudentComplaints SP.
+    // The view pre-joins Departments and ComplaintCategories for clean column names.
+    const query = `SELECT * FROM v_StudentComplaintStatus WHERE student_id = @StudentId ORDER BY submission_date DESC`;
     const parameters = [{ name: 'StudentId', type: TYPES.Int, value: parseInt(studentId) }];
     return await executeQuery(query, parameters);
 };
